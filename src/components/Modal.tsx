@@ -31,14 +31,14 @@ export default function Modal({ open, onClose, title, children, width = 480 }: M
       onClick={onClose}
     >
       <div
-        style={{ background: 'var(--color-card)', borderRadius: 16, width: '100%', maxWidth: width, boxShadow: '0 20px 60px rgba(44,36,32,0.2)', overflow: 'hidden' }}
+        style={{ background: 'var(--color-card)', borderRadius: 16, width: '100%', maxWidth: width, maxHeight: 'min(90vh, 900px)', boxShadow: '0 20px 60px rgba(44,36,32,0.2)', overflow: 'hidden', display: 'flex', flexDirection: 'column', minWidth: 0 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'clamp(16px, 3vw, 20px) clamp(16px, 4vw, 24px)', borderBottom: '1px solid var(--color-warm-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'clamp(16px, 3vw, 20px) clamp(16px, 4vw, 24px)', borderBottom: '1px solid var(--color-warm-border)', flexShrink: 0 }}>
           <h3 style={{ margin: 0, fontSize: 'clamp(16px, 3vw, 18px)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', fontWeight: 700 }}>{title}</h3>
-          <button onClick={onClose} style={{ border: 'none', background: 'var(--color-surface)', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+          <button onClick={onClose} style={{ border: 'none', background: 'var(--color-surface)', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
         </div>
-        <div style={{ padding: 'clamp(16px, 4vw, 24px)' }}>{children}</div>
+        <div style={{ padding: 'clamp(16px, 4vw, 24px)', overflowY: 'auto', overflowX: 'hidden', minWidth: 0, WebkitOverflowScrolling: 'touch' }}>{children}</div>
       </div>
     </div>
   );

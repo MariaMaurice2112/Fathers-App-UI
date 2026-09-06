@@ -55,6 +55,39 @@ input, textarea, select, button {
   font-family: var(--font-body);
 }
 
+/* Native date inputs overflow in RTL layouts on mobile — force a safe, fluid control */
+input[type='date'] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  display: block;
+  direction: ltr;
+  text-align: start;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type='date']::-webkit-date-and-time-value {
+  text-align: start;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.65;
+  padding: 2px;
+  margin-inline-start: 4px;
+}
+
+@media (max-width: 640px) {
+  input[type='date'] {
+    font-size: 16px !important; /* beats inline styles; avoids iOS focus zoom */
+    min-height: 44px;
+    line-height: 1.25;
+    padding-inline: 12px !important;
+  }
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-warm-border) transparent;
@@ -158,6 +191,10 @@ input, textarea, select, button {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+.form-grid > * {
+  min-width: 0;
 }
 
 @media (max-width: 640px) {
