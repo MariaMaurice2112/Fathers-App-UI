@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import type { Child, ChildFormData, Stage } from '@/types';
-import { getTodayISO } from '@/utils';
+import { getApiErrorMessage } from '@/lib/api';
+import { getTodayISO, isValidEgyptianPhone, normalizeEgyptianPhone } from '@/utils';
 
 interface AddEditChildProps {
   child?: Child;
@@ -11,6 +12,16 @@ interface AddEditChildProps {
   onSave: (data: ChildFormData & { id?: string }) => Promise<void>;
   onCancel: () => void;
 }
+
+type FormFields = {
+  name: string;
+  birthday: string;
+  stageId: string;
+  marriageContract: string;
+  phoneNumber: string;
+};
+
+type FormErrors = Partial<Record<keyof FormFields | 'form', string>>;
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
@@ -23,6 +34,40 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
+const CHILD_ALREADY_EXISTS_AR = 'يوجد ابن بهذا الاسم بالفعل';
+
+/** Map known English API messages to Arabic UI copy. */
+function localizeChildError(message: string): { field?: keyof FormFields; message: string } {
+  const lower = message.toLowerCase();
+
+  if (lower.includes('already exists') || lower.includes('child already exist')) {
+    return { field: 'name', message: CHILD_ALREADY_EXISTS_AR };
+  }
+  if (lower.includes('name is required')) {
+    return { field: 'name', message: 'الاسم مطلوب' };
+  }
+  if (lower.includes('stage_id does not exist') || lower.includes('stage_id is required')) {
+    return { field: 'stageId', message: 'المرحلة غير صالحة — اختر مرحلة أخرى' };
+  }
+  if (lower.includes('birthday must be a valid date')) {
+    return { field: 'birthday', message: 'تاريخ الميلاد غير صالح' };
+  }
+  if (lower.includes('marriage_contract must be a valid date')) {
+    return { field: 'marriageContract', message: 'تاريخ خلو الموانع غير صالح' };
+  }
+  if (lower.includes('phone_number') || lower.includes('egyptian mobile')) {
+    return { field: 'phoneNumber', message: 'أدخل رقم موبايل مصري صحيح (010 / 011 / 012 / 015)' };
+  }
+  if (lower.includes('not found') || lower.includes('not owned')) {
+    return { message: 'لم يتم العثور على الابن أو لا تملك صلاحية تعديله' };
+  }
+  if (lower.includes('unauthorized')) {
+    return { message: 'انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى' };
+  }
+
+  return { message };
+}
+
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 14px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10,
   fontSize: 14, color: 'var(--color-text)', background: 'var(--color-cream)', outline: 'none',
@@ -30,42 +75,67 @@ const inputStyle: React.CSSProperties = {
 };
 
 export default function AddEditChild({ child, stages, saving = false, onSave, onCancel }: AddEditChildProps) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormFields>({
     name: child?.name ?? '',
     birthday: child?.birthday ?? '',
     stageId: child?.stageId ? String(child.stageId) : '',
     marriageContract: child?.marriageContract ?? '',
+    phoneNumber: child?.phoneNumber ?? '',
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
+  const [errors, setErrors] = useState<FormErrors>({});
 
-  const set = (key: keyof typeof form, val: string) => {
+  const set = (key: keyof FormFields, val: string) => {
     setForm((f) => ({ ...f, [key]: val }));
-    setErrors((e) => ({ ...e, [key]: undefined }));
+    setErrors((e) => ({ ...e, [key]: undefined, form: undefined }));
   };
 
-  const validate = () => {
-    const errs: typeof errors = {};
+  const validate = (): FormErrors => {
+    const errs: FormErrors = {};
     if (!form.name.trim()) errs.name = 'الاسم مطلوب';
     if (!form.birthday) errs.birthday = 'تاريخ الميلاد مطلوب';
     if (!form.stageId) errs.stageId = 'المرحلة مطلوبة';
+    if (form.phoneNumber.trim() && !isValidEgyptianPhone(form.phoneNumber)) {
+      errs.phoneNumber = 'أدخل رقم موبايل مصري صحيح (010 / 011 / 012 / 015)';
+    }
     return errs;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
-    await onSave({
-      name: form.name.trim(),
-      birthday: form.birthday,
-      stageId: Number(form.stageId),
-      marriageContract: form.marriageContract || undefined,
-      ...(child ? { id: child.id } : {}),
-    });
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
+
+    setErrors({});
+    const normalizedPhone = form.phoneNumber.trim()
+      ? normalizeEgyptianPhone(form.phoneNumber) ?? undefined
+      : undefined;
+
+    try {
+      await onSave({
+        name: form.name.trim(),
+        birthday: form.birthday,
+        stageId: Number(form.stageId),
+        marriageContract: form.marriageContract || undefined,
+        phoneNumber: normalizedPhone,
+        ...(child ? { id: child.id } : {}),
+      });
+    } catch (err) {
+      const localized = localizeChildError(
+        getApiErrorMessage(err, 'تعذّر حفظ بيانات الابن'),
+      );
+      if (localized.field) {
+        setErrors({ [localized.field]: localized.message });
+      } else {
+        setErrors({ form: localized.message });
+      }
+    }
   };
 
-  const inputProps = (key: keyof typeof form) => ({
-    value: form[key] as string,
+  const inputProps = (key: keyof FormFields) => ({
+    value: form[key],
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => set(key, e.target.value),
     style: { ...inputStyle, borderColor: errors[key] ? 'var(--color-danger)' : 'var(--color-warm-border)' },
     onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => { e.target.style.borderColor = 'var(--color-teal)'; },
@@ -87,6 +157,25 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
       </div>
 
       <form onSubmit={handleSubmit}>
+        {errors.form && (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 16,
+              padding: '12px 14px',
+              borderRadius: 10,
+              border: '1px solid rgba(185, 74, 72, 0.35)',
+              background: 'rgba(185, 74, 72, 0.08)',
+              color: 'var(--color-danger)',
+              fontSize: 13,
+              fontFamily: 'var(--font-body)',
+              lineHeight: 1.5,
+            }}
+          >
+            {errors.form}
+          </div>
+        )}
+
         <div style={{ background: 'var(--color-card)', borderRadius: 16, border: '1px solid var(--color-warm-border)', padding: '24px', marginBottom: 28, boxShadow: '0 1px 6px rgba(44,36,32,0.05)' }}>
           <h2 style={{ margin: '0 0 20px', fontSize: 16, fontFamily: 'var(--font-display)', color: 'var(--color-text)', fontWeight: 700, paddingBottom: 12, borderBottom: '1px solid var(--color-warm-border)' }}>البيانات الأساسية</h2>
           <div className="form-grid">
@@ -107,8 +196,26 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
               </select>
               {errors.stageId && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.stageId}</p>}
             </Field>
-            <Field label="عقد زواج (اختياري)">
+            <Field label="خلو موانع (اختياري)">
               <input type="date" disabled={saving} {...inputProps('marriageContract')} />
+              {errors.marriageContract && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.marriageContract}</p>}
+            </Field>
+            <Field label="رقم الهاتف (اختياري)">
+              <input
+                type="tel"
+                dir="ltr"
+                placeholder="01012345678"
+                disabled={saving}
+                {...inputProps('phoneNumber')}
+                style={{
+                  ...inputStyle,
+                  borderColor: errors.phoneNumber ? 'var(--color-danger)' : 'var(--color-warm-border)',
+                  direction: 'ltr',
+                  textAlign: 'left',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              />
+              {errors.phoneNumber && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.phoneNumber}</p>}
             </Field>
           </div>
         </div>

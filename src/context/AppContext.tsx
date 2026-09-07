@@ -221,6 +221,7 @@ export function AppProvider({ children: reactChildren }: { children: ReactNode }
         name: data.name,
         birthday: data.birthday || undefined,
         marriageContract: data.marriageContract || undefined,
+        phoneNumber: data.phoneNumber || undefined,
         stageId: data.stageId,
       };
 

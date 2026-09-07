@@ -11,6 +11,7 @@ export interface ApiChild {
   name: string;
   birthday?: string | null;
   marriage_contract?: string | null;
+  phone_number?: string | null;
   age?: number | null;
   stage_id: number;
   stage: string;
@@ -91,6 +92,11 @@ export interface LoginResponse {
     email: string;
     father_name?: string | null;
   };
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+  message: string;
 }
 
 export interface ApiErrorBody {

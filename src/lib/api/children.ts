@@ -1,7 +1,7 @@
 import { invokeFunction } from './invoke';
-import { mapApiChild, mapApiStage, childToCreatePayload, childToUpdatePayload } from './mappers';
-import type { ApiChild, ApiChildDetail, ApiConfessionRecord, ApiOperation, ApiStage } from './types';
-import type { Child } from '@/types';
+import { mapApiChild, mapApiStage, mapAppEvents, childToCreatePayload, childToUpdatePayload } from './mappers';
+import type { ApiChild, ApiChildDetail, ApiConfessionRecord, ApiEvent, ApiOperation, ApiStage } from './types';
+import type { AppEvent, Child } from '@/types';
 
 export async function fetchChildren(): Promise<Child[]> {
   const res = await invokeFunction<{ data: ApiChild[] }>('children');
@@ -13,10 +13,16 @@ export async function fetchChild(id: string): Promise<Child> {
   return mapApiChild(res.data);
 }
 
+export async function fetchChildEvents(childId: string): Promise<AppEvent[]> {
+  const res = await invokeFunction<{ data: ApiEvent[] }>(`children/${childId}/events`);
+  return mapAppEvents(res.data ?? []);
+}
+
 export async function createChild(data: {
   name: string;
   birthday?: string;
   marriageContract?: string;
+  phoneNumber?: string;
   stageId: number;
 }): Promise<Child> {
   const res = await invokeFunction<{ success: boolean; data: ApiChild }>('children', {
@@ -28,7 +34,7 @@ export async function createChild(data: {
 
 export async function updateChild(
   id: string,
-  data: { name?: string; birthday?: string; marriageContract?: string; stageId?: number }
+  data: { name?: string; birthday?: string; marriageContract?: string; phoneNumber?: string; stageId?: number }
 ): Promise<Child> {
   const res = await invokeFunction<{ success: boolean; data: ApiChild }>(`children/${id}`, {
     method: 'PATCH',

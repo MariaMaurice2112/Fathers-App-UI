@@ -73,6 +73,7 @@ export function mapApiChild(api: ApiChild | ApiChildDetail): Child {
     name: api.name,
     birthday: api.birthday ?? undefined,
     marriageContract: api.marriage_contract ?? undefined,
+    phoneNumber: api.phone_number ?? undefined,
     stageId: api.stage_id,
     stage: api.stage,
     latestConfessionAt: api.latest_confession_at ?? undefined,
@@ -162,12 +163,14 @@ export function childToCreatePayload(data: {
   name: string;
   birthday?: string;
   marriageContract?: string;
+  phoneNumber?: string;
   stageId: number;
 }) {
   return {
     name: data.name,
     birthday: data.birthday || undefined,
     marriage_contract: data.marriageContract || null,
+    phone_number: data.phoneNumber?.trim() || null,
     stage_id: data.stageId,
   };
 }
@@ -176,12 +179,14 @@ export function childToUpdatePayload(data: {
   name?: string;
   birthday?: string;
   marriageContract?: string;
+  phoneNumber?: string;
   stageId?: number;
 }) {
   const payload: Record<string, unknown> = {};
   if (data.name !== undefined) payload.name = data.name;
   if (data.birthday !== undefined) payload.birthday = data.birthday || null;
   if (data.marriageContract !== undefined) payload.marriage_contract = data.marriageContract || null;
+  if (data.phoneNumber !== undefined) payload.phone_number = data.phoneNumber?.trim() || null;
   if (data.stageId !== undefined) payload.stage_id = data.stageId;
   return payload;
 }

@@ -17,6 +17,7 @@ const navItems: { href: string; label: string; icon: string; match: (path: strin
   { href: '/dashboard', label: 'الرئيسية', icon: '⊞', match: (path) => path === '/dashboard' },
   { href: '/events', label: 'الأحداث', icon: '▦', match: (path) => path.startsWith('/events') },
   { href: '/children', label: 'أبنائي', icon: '◈', match: (path) => path.startsWith('/children') },
+  { href: '/change-password', label: 'تغيير كلمة المرور', icon: '⚿', match: (path) => path.startsWith('/change-password') },
 ];
 
 export default function Sidebar({ user, onLogout, isOpen, onClose }: SidebarProps) {

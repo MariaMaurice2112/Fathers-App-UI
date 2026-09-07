@@ -79,6 +79,26 @@ export function getAge(birthdayStr: string): number {
   return age;
 }
 
+/** Egyptian mobile: 010/011/012/015 — accepts local or +20 / 0020 forms. Returns +20… or null. */
+export function normalizeEgyptianPhone(input: string): string | null {
+  const raw = input.trim();
+  if (!raw) return null;
+
+  let digits = raw.replace(/[^\d+]/g, '');
+  if (digits.startsWith('+')) digits = digits.slice(1);
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('0') && !digits.startsWith('20')) {
+    digits = `20${digits.slice(1)}`;
+  }
+
+  if (!/^201[0125]\d{8}$/.test(digits)) return null;
+  return `+${digits}`;
+}
+
+export function isValidEgyptianPhone(input: string): boolean {
+  return normalizeEgyptianPhone(input) !== null;
+}
+
 export function hasRecentBirthdayOperation(child: Child): boolean {
   const today = getTodayISO();
   const windowStart = new Date();
