@@ -1,4 +1,5 @@
 export type ConfessionStatus = 'NO_CONFESSION_RECORDED' | 'OVERDUE' | 'UP_TO_DATE';
+export type MaritalStatus = 'single' | 'married';
 
 export interface ApiStage {
   id: number;
@@ -12,6 +13,8 @@ export interface ApiChild {
   birthday?: string | null;
   marriage_contract?: string | null;
   phone_number?: string | null;
+  marital_status?: MaritalStatus | null;
+  marriage_date?: string | null;
   age?: number | null;
   stage_id: number;
   stage: string;

@@ -8,9 +8,11 @@ import { createNotification, fetchChildEvents, getApiErrorMessage } from '@/lib/
 import { OPERATION_TYPE_TO_API } from '@/lib/api/mappers';
 import {
   formatDate,
+  formatEgyptianPhoneDisplay,
   getAge,
   getDaysDiff,
   getTodayISO,
+  normalizeEgyptianPhone,
   OPERATION_TYPE_ICONS,
   OPERATION_TYPE_LABELS,
   toISODateTime,
@@ -195,45 +197,48 @@ export default function ChildProfile({
         <Avatar child={child} size={72} />
         <div style={{ flex: 1, minWidth: 200 }}>
           <h1 style={{ margin: '0 0 4px', fontSize: 'clamp(20px, 4vw, 24px)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', fontWeight: 700 }}>{child.name}</h1>
-          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>{child.stage}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 28px', fontSize: 16, lineHeight: 1.5, alignItems: 'flex-start' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
-              {age !== null && (
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ color: 'var(--color-text-muted)' }}>العمر: </span>
-                  <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{age} سنة</span>
-                </div>
-              )}
-              {child.phoneNumber && (
-                <div style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-start', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-                  <span style={{ color: 'var(--color-text-muted)' }}>رقم الهاتف:</span>
-                  <a
-                    href={`tel:${child.phoneNumber}`}
-                    dir="ltr"
-                    style={{
-                      color: 'var(--color-teal)',
-                      fontWeight: 600,
-                      textDecoration: 'none',
-                      fontVariantNumeric: 'tabular-nums',
-                      fontSize: 16,
-                      unicodeBidi: 'isolate',
-                    }}
-                  >
-                    {child.phoneNumber}
-                  </a>
-                </div>
-              )}
-            </div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16 }}>{child.stage}</div>
+          <div className="profile-meta-grid">
+            {age !== null && (
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">العمر</span>
+                <span className="profile-meta-value">{age} سنة</span>
+              </div>
+            )}
             {child.birthday && (
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>تاريخ الميلاد: </span>
-                <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{formatDate(child.birthday)}</span>
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">تاريخ الميلاد</span>
+                <span className="profile-meta-value">{formatDate(child.birthday)}</span>
+              </div>
+            )}
+            <div className="profile-meta-item">
+              <span className="profile-meta-label">الحالة الاجتماعية</span>
+              <span className="profile-meta-value">
+                {child.maritalStatus === 'married' ? 'متزوج' : 'أعزب'}
+              </span>
+            </div>
+            {child.phoneNumber && (
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">رقم الهاتف</span>
+                <a
+                  href={`tel:${normalizeEgyptianPhone(child.phoneNumber) ?? child.phoneNumber}`}
+                  className="profile-meta-value profile-meta-value--link"
+                  dir="ltr"
+                >
+                  {formatEgyptianPhoneDisplay(child.phoneNumber)}
+                </a>
+              </div>
+            )}
+            {child.maritalStatus === 'married' && child.marriageDate && (
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">تاريخ الزواج</span>
+                <span className="profile-meta-value">{formatDate(child.marriageDate)}</span>
               </div>
             )}
             {child.marriageContract && (
-              <div style={{ fontSize: 13, textAlign: 'right' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>خلو موانع: </span>
-                <span style={{ color: 'var(--color-text-soft)', fontWeight: 500 }}>{formatDate(child.marriageContract)}</span>
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">خلو موانع</span>
+                <span className="profile-meta-value">{formatDate(child.marriageContract)}</span>
               </div>
             )}
           </div>

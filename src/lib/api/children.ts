@@ -23,6 +23,8 @@ export async function createChild(data: {
   birthday?: string;
   marriageContract?: string;
   phoneNumber?: string;
+  maritalStatus: 'single' | 'married';
+  marriageDate?: string;
   stageId: number;
 }): Promise<Child> {
   const res = await invokeFunction<{ success: boolean; data: ApiChild }>('children', {
@@ -34,7 +36,15 @@ export async function createChild(data: {
 
 export async function updateChild(
   id: string,
-  data: { name?: string; birthday?: string; marriageContract?: string; phoneNumber?: string; stageId?: number }
+  data: {
+    name?: string;
+    birthday?: string;
+    marriageContract?: string;
+    phoneNumber?: string;
+    maritalStatus?: 'single' | 'married';
+    marriageDate?: string;
+    stageId?: number;
+  }
 ): Promise<Child> {
   const res = await invokeFunction<{ success: boolean; data: ApiChild }>(`children/${id}`, {
     method: 'PATCH',

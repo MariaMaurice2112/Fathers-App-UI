@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Child, ChildFormData, Stage } from '@/types';
+import type { Child, ChildFormData, MaritalStatus, Stage } from '@/types';
 import { getApiErrorMessage } from '@/lib/api';
 import { getTodayISO, isValidEgyptianPhone, normalizeEgyptianPhone } from '@/utils';
 
@@ -19,6 +19,8 @@ type FormFields = {
   stageId: string;
   marriageContract: string;
   phoneNumber: string;
+  maritalStatus: MaritalStatus;
+  marriageDate: string;
 };
 
 type FormErrors = Partial<Record<keyof FormFields | 'form', string>>;
@@ -55,6 +57,12 @@ function localizeChildError(message: string): { field?: keyof FormFields; messag
   if (lower.includes('marriage_contract must be a valid date')) {
     return { field: 'marriageContract', message: 'تاريخ خلو الموانع غير صالح' };
   }
+  if (lower.includes('marital_status')) {
+    return { field: 'maritalStatus', message: 'الحالة الاجتماعية غير صالحة' };
+  }
+  if (lower.includes('marriage_date')) {
+    return { field: 'marriageDate', message: 'تاريخ الزواج غير صالح' };
+  }
   if (lower.includes('phone_number') || lower.includes('egyptian mobile')) {
     return { field: 'phoneNumber', message: 'أدخل رقم موبايل مصري صحيح (010 / 011 / 012 / 015)' };
   }
@@ -81,12 +89,29 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
     stageId: child?.stageId ? String(child.stageId) : '',
     marriageContract: child?.marriageContract ?? '',
     phoneNumber: child?.phoneNumber ?? '',
+    maritalStatus: child?.maritalStatus ?? 'single',
+    marriageDate: child?.marriageDate ?? '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
   const set = (key: keyof FormFields, val: string) => {
-    setForm((f) => ({ ...f, [key]: val }));
-    setErrors((e) => ({ ...e, [key]: undefined, form: undefined }));
+    setForm((f) => {
+      if (key === 'maritalStatus') {
+        const status = val as MaritalStatus;
+        return {
+          ...f,
+          maritalStatus: status,
+          marriageDate: status === 'married' ? f.marriageDate : '',
+        };
+      }
+      return { ...f, [key]: val };
+    });
+    setErrors((e) => ({
+      ...e,
+      [key]: undefined,
+      form: undefined,
+      ...(key === 'maritalStatus' ? { marriageDate: undefined } : {}),
+    }));
   };
 
   const validate = (): FormErrors => {
@@ -94,6 +119,7 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
     if (!form.name.trim()) errs.name = 'الاسم مطلوب';
     if (!form.birthday) errs.birthday = 'تاريخ الميلاد مطلوب';
     if (!form.stageId) errs.stageId = 'المرحلة مطلوبة';
+    if (!form.maritalStatus) errs.maritalStatus = 'الحالة الاجتماعية مطلوبة';
     if (form.phoneNumber.trim() && !isValidEgyptianPhone(form.phoneNumber)) {
       errs.phoneNumber = 'أدخل رقم موبايل مصري صحيح (010 / 011 / 012 / 015)';
     }
@@ -120,6 +146,8 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
         stageId: Number(form.stageId),
         marriageContract: form.marriageContract || undefined,
         phoneNumber: normalizedPhone,
+        maritalStatus: form.maritalStatus,
+        marriageDate: form.maritalStatus === 'married' ? (form.marriageDate || undefined) : undefined,
         ...(child ? { id: child.id } : {}),
       });
     } catch (err) {
@@ -144,6 +172,7 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
 
   const isEdit = !!child;
   const today = getTodayISO();
+  const isMarried = form.maritalStatus === 'married';
 
   return (
     <div className="page-shell page-shell--form">
@@ -196,6 +225,23 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
               </select>
               {errors.stageId && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.stageId}</p>}
             </Field>
+            <Field label="الحالة الاجتماعية" required>
+              <select
+                disabled={saving}
+                {...inputProps('maritalStatus')}
+                style={{ ...inputStyle, borderColor: errors.maritalStatus ? 'var(--color-danger)' : 'var(--color-warm-border)', cursor: 'pointer' }}
+              >
+                <option value="single">أعزب</option>
+                <option value="married">متزوج</option>
+              </select>
+              {errors.maritalStatus && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.maritalStatus}</p>}
+            </Field>
+            {isMarried && (
+              <Field label="تاريخ الزواج (اختياري)">
+                <input type="date" max={today} disabled={saving} {...inputProps('marriageDate')} />
+                {errors.marriageDate && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.marriageDate}</p>}
+              </Field>
+            )}
             <Field label="خلو موانع (اختياري)">
               <input type="date" disabled={saving} {...inputProps('marriageContract')} />
               {errors.marriageContract && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.marriageContract}</p>}

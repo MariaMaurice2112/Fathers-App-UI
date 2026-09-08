@@ -99,6 +99,14 @@ export function isValidEgyptianPhone(input: string): boolean {
   return normalizeEgyptianPhone(input) !== null;
 }
 
+/** Display form for UI (LTR): +20 10X XXX XXXX. Falls back to trimmed input. */
+export function formatEgyptianPhoneDisplay(input: string): string {
+  const normalized = normalizeEgyptianPhone(input);
+  if (!normalized) return input.trim();
+  const digits = normalized.slice(1); // 2010XXXXXXXX
+  return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+}
+
 export function hasRecentBirthdayOperation(child: Child): boolean {
   const today = getTodayISO();
   const windowStart = new Date();

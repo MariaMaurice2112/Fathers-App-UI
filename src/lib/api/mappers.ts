@@ -74,6 +74,8 @@ export function mapApiChild(api: ApiChild | ApiChildDetail): Child {
     birthday: api.birthday ?? undefined,
     marriageContract: api.marriage_contract ?? undefined,
     phoneNumber: api.phone_number ?? undefined,
+    maritalStatus: api.marital_status === 'married' ? 'married' : 'single',
+    marriageDate: api.marriage_date ?? undefined,
     stageId: api.stage_id,
     stage: api.stage,
     latestConfessionAt: api.latest_confession_at ?? undefined,
@@ -164,13 +166,18 @@ export function childToCreatePayload(data: {
   birthday?: string;
   marriageContract?: string;
   phoneNumber?: string;
+  maritalStatus: 'single' | 'married';
+  marriageDate?: string;
   stageId: number;
 }) {
+  const isMarried = data.maritalStatus === 'married';
   return {
     name: data.name,
     birthday: data.birthday || undefined,
     marriage_contract: data.marriageContract || null,
     phone_number: data.phoneNumber?.trim() || null,
+    marital_status: data.maritalStatus,
+    marriage_date: isMarried ? (data.marriageDate || null) : null,
     stage_id: data.stageId,
   };
 }
@@ -180,6 +187,8 @@ export function childToUpdatePayload(data: {
   birthday?: string;
   marriageContract?: string;
   phoneNumber?: string;
+  maritalStatus?: 'single' | 'married';
+  marriageDate?: string;
   stageId?: number;
 }) {
   const payload: Record<string, unknown> = {};
@@ -187,6 +196,13 @@ export function childToUpdatePayload(data: {
   if (data.birthday !== undefined) payload.birthday = data.birthday || null;
   if (data.marriageContract !== undefined) payload.marriage_contract = data.marriageContract || null;
   if (data.phoneNumber !== undefined) payload.phone_number = data.phoneNumber?.trim() || null;
+  if (data.maritalStatus !== undefined) {
+    payload.marital_status = data.maritalStatus;
+    payload.marriage_date =
+      data.maritalStatus === 'married' ? (data.marriageDate || null) : null;
+  } else if (data.marriageDate !== undefined) {
+    payload.marriage_date = data.marriageDate || null;
+  }
   if (data.stageId !== undefined) payload.stage_id = data.stageId;
   return payload;
 }
