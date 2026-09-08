@@ -74,6 +74,7 @@ export function mapApiChild(api: ApiChild | ApiChildDetail): Child {
     birthday: api.birthday ?? undefined,
     marriageContract: api.marriage_contract ?? undefined,
     phoneNumber: api.phone_number ?? undefined,
+    phoneNumber2: api.phone_number_2 ?? undefined,
     maritalStatus: api.marital_status === 'married' ? 'married' : 'single',
     marriageDate: api.marriage_date ?? undefined,
     stageId: api.stage_id,
@@ -166,6 +167,7 @@ export function childToCreatePayload(data: {
   birthday?: string;
   marriageContract?: string;
   phoneNumber?: string;
+  phoneNumber2?: string;
   maritalStatus: 'single' | 'married';
   marriageDate?: string;
   stageId: number;
@@ -176,6 +178,7 @@ export function childToCreatePayload(data: {
     birthday: data.birthday || undefined,
     marriage_contract: data.marriageContract || null,
     phone_number: data.phoneNumber?.trim() || null,
+    phone_number_2: data.phoneNumber2?.trim() || null,
     marital_status: data.maritalStatus,
     marriage_date: isMarried ? (data.marriageDate || null) : null,
     stage_id: data.stageId,
@@ -187,6 +190,7 @@ export function childToUpdatePayload(data: {
   birthday?: string;
   marriageContract?: string;
   phoneNumber?: string;
+  phoneNumber2?: string;
   maritalStatus?: 'single' | 'married';
   marriageDate?: string;
   stageId?: number;
@@ -196,6 +200,7 @@ export function childToUpdatePayload(data: {
   if (data.birthday !== undefined) payload.birthday = data.birthday || null;
   if (data.marriageContract !== undefined) payload.marriage_contract = data.marriageContract || null;
   if (data.phoneNumber !== undefined) payload.phone_number = data.phoneNumber?.trim() || null;
+  if (data.phoneNumber2 !== undefined) payload.phone_number_2 = data.phoneNumber2?.trim() || null;
   if (data.maritalStatus !== undefined) {
     payload.marital_status = data.maritalStatus;
     payload.marriage_date =

@@ -23,6 +23,7 @@ export async function createChild(data: {
   birthday?: string;
   marriageContract?: string;
   phoneNumber?: string;
+  phoneNumber2?: string;
   maritalStatus: 'single' | 'married';
   marriageDate?: string;
   stageId: number;
@@ -41,6 +42,7 @@ export async function updateChild(
     birthday?: string;
     marriageContract?: string;
     phoneNumber?: string;
+    phoneNumber2?: string;
     maritalStatus?: 'single' | 'married';
     marriageDate?: string;
     stageId?: number;

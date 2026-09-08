@@ -229,6 +229,18 @@ export default function ChildProfile({
                 </a>
               </div>
             )}
+            {child.phoneNumber2 && (
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">رقم هاتف إضافي</span>
+                <a
+                  href={`tel:${normalizeEgyptianPhone(child.phoneNumber2) ?? child.phoneNumber2}`}
+                  className="profile-meta-value profile-meta-value--link"
+                  dir="ltr"
+                >
+                  {formatEgyptianPhoneDisplay(child.phoneNumber2)}
+                </a>
+              </div>
+            )}
             {child.maritalStatus === 'married' && child.marriageDate && (
               <div className="profile-meta-item">
                 <span className="profile-meta-label">تاريخ الزواج</span>

@@ -28,6 +28,7 @@ export interface Child {
   birthday?: string;
   marriageContract?: string;
   phoneNumber?: string;
+  phoneNumber2?: string;
   maritalStatus: MaritalStatus;
   marriageDate?: string;
   stageId: number;
@@ -91,6 +92,7 @@ export interface ChildFormData {
   birthday: string;
   marriageContract?: string;
   phoneNumber?: string;
+  phoneNumber2?: string;
   maritalStatus: MaritalStatus;
   marriageDate?: string;
   stageId: number;

@@ -19,6 +19,7 @@ type FormFields = {
   stageId: string;
   marriageContract: string;
   phoneNumber: string;
+  phoneNumber2: string;
   maritalStatus: MaritalStatus;
   marriageDate: string;
 };
@@ -63,6 +64,9 @@ function localizeChildError(message: string): { field?: keyof FormFields; messag
   if (lower.includes('marriage_date')) {
     return { field: 'marriageDate', message: 'تاريخ الزواج غير صالح' };
   }
+  if (lower.includes('phone_number_2')) {
+    return { field: 'phoneNumber2', message: 'أدخل رقم موبايل مصري صحيح (010 / 011 / 012 / 015)' };
+  }
   if (lower.includes('phone_number') || lower.includes('egyptian mobile')) {
     return { field: 'phoneNumber', message: 'أدخل رقم موبايل مصري صحيح (010 / 011 / 012 / 015)' };
   }
@@ -89,6 +93,7 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
     stageId: child?.stageId ? String(child.stageId) : '',
     marriageContract: child?.marriageContract ?? '',
     phoneNumber: child?.phoneNumber ?? '',
+    phoneNumber2: child?.phoneNumber2 ?? '',
     maritalStatus: child?.maritalStatus ?? 'single',
     marriageDate: child?.marriageDate ?? '',
   });
@@ -123,6 +128,9 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
     if (form.phoneNumber.trim() && !isValidEgyptianPhone(form.phoneNumber)) {
       errs.phoneNumber = 'أدخل رقم موبايل مصري صحيح (010 / 011 / 012 / 015)';
     }
+    if (form.phoneNumber2.trim() && !isValidEgyptianPhone(form.phoneNumber2)) {
+      errs.phoneNumber2 = 'أدخل رقم موبايل مصري صحيح (010 / 011 / 012 / 015)';
+    }
     return errs;
   };
 
@@ -138,6 +146,9 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
     const normalizedPhone = form.phoneNumber.trim()
       ? normalizeEgyptianPhone(form.phoneNumber) ?? undefined
       : undefined;
+    const normalizedPhone2 = form.phoneNumber2.trim()
+      ? normalizeEgyptianPhone(form.phoneNumber2) ?? undefined
+      : undefined;
 
     try {
       await onSave({
@@ -146,6 +157,7 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
         stageId: Number(form.stageId),
         marriageContract: form.marriageContract || undefined,
         phoneNumber: normalizedPhone,
+        phoneNumber2: normalizedPhone2,
         maritalStatus: form.maritalStatus,
         marriageDate: form.maritalStatus === 'married' ? (form.marriageDate || undefined) : undefined,
         ...(child ? { id: child.id } : {}),
@@ -262,6 +274,23 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
                 }}
               />
               {errors.phoneNumber && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.phoneNumber}</p>}
+            </Field>
+            <Field label="رقم هاتف إضافي (اختياري)">
+              <input
+                type="tel"
+                dir="ltr"
+                placeholder="01012345678"
+                disabled={saving}
+                {...inputProps('phoneNumber2')}
+                style={{
+                  ...inputStyle,
+                  borderColor: errors.phoneNumber2 ? 'var(--color-danger)' : 'var(--color-warm-border)',
+                  direction: 'ltr',
+                  textAlign: 'left',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              />
+              {errors.phoneNumber2 && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.phoneNumber2}</p>}
             </Field>
           </div>
         </div>

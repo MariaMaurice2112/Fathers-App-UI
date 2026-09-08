@@ -13,6 +13,7 @@ export interface ApiChild {
   birthday?: string | null;
   marriage_contract?: string | null;
   phone_number?: string | null;
+  phone_number_2?: string | null;
   marital_status?: MaritalStatus | null;
   marriage_date?: string | null;
   age?: number | null;
