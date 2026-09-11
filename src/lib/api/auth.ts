@@ -1,6 +1,6 @@
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { invokeFunction } from './invoke';
-import type { LoginResponse } from './types';
+import type { ChangePasswordResponse, LoginResponse } from './types';
 import type { PriestUser } from '@/types';
 
 const USER_STORAGE_KEY = 'beklaous_user';
@@ -53,6 +53,19 @@ export async function logoutUser(): Promise<void> {
     await getSupabase().auth.signOut();
   }
   clearStoredUser();
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<ChangePasswordResponse> {
+  return invokeFunction<ChangePasswordResponse>('change-password', {
+    method: 'POST',
+    body: {
+      current_password: currentPassword,
+      new_password: newPassword,
+    },
+  });
 }
 
 export async function restoreSession(): Promise<PriestUser | null> {

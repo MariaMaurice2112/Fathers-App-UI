@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import type { Child, OperationTypeLabel } from '@/types';
+import { useCallback, useEffect, useState } from 'react';
+import type { AppEvent, Child, OperationTypeLabel } from '@/types';
 import Avatar from '@/components/Avatar';
 import Modal from '@/components/Modal';
-import { createNotification, getApiErrorMessage } from '@/lib/api';
+import { createNotification, fetchChildEvents, getApiErrorMessage } from '@/lib/api';
 import { OPERATION_TYPE_TO_API } from '@/lib/api/mappers';
 import {
   formatDate,
+  formatEgyptianPhoneDisplay,
   getAge,
   getDaysDiff,
   getTodayISO,
+  normalizeEgyptianPhone,
   OPERATION_TYPE_ICONS,
   OPERATION_TYPE_LABELS,
   toISODateTime,
@@ -21,6 +23,7 @@ interface ChildProfileProps {
   saving?: boolean;
   onBack: () => void;
   onEdit: () => void;
+  onDelete: (childId: string) => Promise<void>;
   onAddOperation: (childId: string, type: string, operationDate: string, note?: string) => Promise<void>;
   onAddConfession: (childId: string, confessionAt: string, notes?: string) => Promise<void>;
 }
@@ -30,12 +33,14 @@ export default function ChildProfile({
   saving = false,
   onBack,
   onEdit,
+  onDelete,
   onAddOperation,
   onAddConfession,
 }: ChildProfileProps) {
   const [operationModal, setOperationModal] = useState(false);
   const [confessionModal, setConfessionModal] = useState(false);
   const [eventModal, setEventModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
   const [notesVisible, setNotesVisible] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [operationDate, setOperationDate] = useState(getTodayISO());
@@ -47,11 +52,33 @@ export default function ChildProfile({
   const [eventMessage, setEventMessage] = useState('');
   const [eventSaving, setEventSaving] = useState(false);
   const [eventError, setEventError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [childEvents, setChildEvents] = useState<AppEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [eventsError, setEventsError] = useState<string | null>(null);
 
   const age = child.birthday ? getAge(child.birthday) : null;
   const confessionDays = child.latestConfessionAt ? getDaysDiff(child.latestConfessionAt) : null;
   const overdueConfession = child.needsConfession;
-  const busy = saving || eventSaving;
+  const busy = saving || eventSaving || deleting;
+
+  const loadChildEvents = useCallback(async () => {
+    setEventsLoading(true);
+    setEventsError(null);
+    try {
+      const events = await fetchChildEvents(child.id);
+      setChildEvents(events);
+    } catch (err) {
+      setEventsError(getApiErrorMessage(err, 'تعذّر تحميل الأحداث'));
+    } finally {
+      setEventsLoading(false);
+    }
+  }, [child.id]);
+
+  useEffect(() => {
+    void loadChildEvents();
+  }, [loadChildEvents]);
 
   const confessions = [...child.confessions]
     .map((c) => ({
@@ -116,12 +143,17 @@ export default function ChildProfile({
     setEventSaving(true);
     setEventError(null);
     try {
-      await createNotification({
+      const created = await createNotification({
         title: eventTitle.trim(),
         notificationDate: eventDate,
         message: eventMessage.trim() || undefined,
         childId: child.id,
       });
+      setChildEvents((prev) =>
+        [created, ...prev].sort(
+          (a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()
+        )
+      );
       setEventModal(false);
       setEventTitle('');
       setEventDate(getTodayISO());
@@ -130,6 +162,28 @@ export default function ChildProfile({
       setEventError(getApiErrorMessage(err, 'تعذّر إضافة الحدث'));
     } finally {
       setEventSaving(false);
+    }
+  };
+
+  const openDeleteModal = () => {
+    setDeleteError(null);
+    setDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    if (deleting) return;
+    setDeleteModal(false);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete(child.id);
+    } catch (err) {
+      setDeleteError(getApiErrorMessage(err, 'تعذّر حذف الابن'));
+      setDeleting(false);
     }
   };
 
@@ -143,15 +197,66 @@ export default function ChildProfile({
         <Avatar child={child} size={72} />
         <div style={{ flex: 1, minWidth: 200 }}>
           <h1 style={{ margin: '0 0 4px', fontSize: 'clamp(20px, 4vw, 24px)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', fontWeight: 700 }}>{child.name}</h1>
-          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>{child.stage}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px 24px', fontSize: 13 }}>
-            {age !== null && <div><span style={{ color: 'var(--color-text-muted)' }}>العمر: </span><span style={{ color: 'var(--color-text-soft)', fontWeight: 500 }}>{age} سنة</span></div>}
-            {child.birthday && <div><span style={{ color: 'var(--color-text-muted)' }}>تاريخ الميلاد: </span><span style={{ color: 'var(--color-text-soft)', fontWeight: 500 }}>{formatDate(child.birthday)}</span></div>}
-            {child.marriageContract && <div><span style={{ color: 'var(--color-text-muted)' }}>عقد زواج: </span><span style={{ color: 'var(--color-text-soft)', fontWeight: 500 }}>{formatDate(child.marriageContract)}</span></div>}
+          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 16 }}>{child.stage}</div>
+          <div className="profile-meta-grid">
+            {age !== null && (
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">العمر</span>
+                <span className="profile-meta-value">{age} سنة</span>
+              </div>
+            )}
+            {child.birthday && (
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">تاريخ الميلاد</span>
+                <span className="profile-meta-value">{formatDate(child.birthday)}</span>
+              </div>
+            )}
+            <div className="profile-meta-item">
+              <span className="profile-meta-label">الحالة الاجتماعية</span>
+              <span className="profile-meta-value">
+                {child.maritalStatus === 'married' ? 'متزوج' : 'أعزب'}
+              </span>
+            </div>
+            {child.phoneNumber && (
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">رقم الهاتف</span>
+                <a
+                  href={`tel:${normalizeEgyptianPhone(child.phoneNumber) ?? child.phoneNumber}`}
+                  className="profile-meta-value profile-meta-value--link"
+                  dir="ltr"
+                >
+                  {formatEgyptianPhoneDisplay(child.phoneNumber)}
+                </a>
+              </div>
+            )}
+            {child.phoneNumber2 && (
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">رقم هاتف إضافي</span>
+                <a
+                  href={`tel:${normalizeEgyptianPhone(child.phoneNumber2) ?? child.phoneNumber2}`}
+                  className="profile-meta-value profile-meta-value--link"
+                  dir="ltr"
+                >
+                  {formatEgyptianPhoneDisplay(child.phoneNumber2)}
+                </a>
+              </div>
+            )}
+            {child.maritalStatus === 'married' && child.marriageDate && (
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">تاريخ الزواج</span>
+                <span className="profile-meta-value">{formatDate(child.marriageDate)}</span>
+              </div>
+            )}
+            {child.marriageContract && (
+              <div className="profile-meta-item">
+                <span className="profile-meta-label">خلو موانع</span>
+                <span className="profile-meta-value">{formatDate(child.marriageContract)}</span>
+              </div>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-          <button onClick={onEdit} style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>تعديل</button>
+          <button onClick={onEdit} disabled={busy} style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>تعديل</button>
           <button
             onClick={openEventModal}
             disabled={busy}
@@ -250,6 +355,61 @@ export default function ChildProfile({
         </div>
       </div>
 
+      <div style={{ background: 'var(--color-card)', borderRadius: 16, border: '1px solid var(--color-warm-border)', boxShadow: '0 1px 6px rgba(44,36,32,0.06)', overflow: 'hidden', marginTop: 24 }}>
+        <div className="timeline-header" style={{ padding: '18px 24px', borderBottom: '1px solid var(--color-warm-border)' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 18, fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>أحداث الابن</h2>
+          </div>
+          <button onClick={openEventModal} disabled={busy} style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: 'var(--color-teal)', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600 }}>+ إضافة حدث</button>
+        </div>
+        <div style={{ padding: '8px 0' }}>
+          {eventsLoading ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 14 }}>جاري تحميل الأحداث…</p>
+            </div>
+          ) : eventsError ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <p style={{ margin: '0 0 12px', color: 'var(--color-danger)', fontSize: 14 }}>{eventsError}</p>
+              <button
+                type="button"
+                onClick={() => void loadChildEvents()}
+                style={{ padding: '8px 16px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+              >
+                إعادة المحاولة
+              </button>
+            </div>
+          ) : childEvents.length === 0 ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 14 }}>لا توجد أحداث مرتبطة بهذا الابن</p>
+            </div>
+          ) : (
+            <div style={{ padding: '16px 24px' }}>
+              {childEvents.map((ev, i) => (
+                <div key={ev.id} style={{ display: 'flex', gap: 16, paddingBottom: i < childEvents.length - 1 ? 24 : 0, position: 'relative' }}>
+                  {i < childEvents.length - 1 && (
+                    <div style={{ position: 'absolute', right: 15, top: 28, bottom: 0, width: 1, background: 'var(--color-warm-border)' }} />
+                  )}
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-teal-pale)', border: '2px solid var(--color-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0, position: 'relative', zIndex: 1 }}>
+                    📅
+                  </div>
+                  <div style={{ flex: 1, paddingTop: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{formatDate(ev.eventDate)}</span>
+                      <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, background: 'var(--color-teal-pale)', color: 'var(--color-teal)' }}>حدث</span>
+                    </div>
+                    <div style={{ fontSize: 14, color: 'var(--color-text)', fontWeight: 600, lineHeight: 1.5 }}>{ev.title}</div>
+                    {ev.message && (
+                      <div style={{ fontSize: 13, color: 'var(--color-text-soft)', lineHeight: 1.5, marginTop: 4 }}>{ev.message}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {notesVisible && (
         <div style={{ background: 'var(--color-card)', borderRadius: 16, border: '1px solid var(--color-warm-border)', boxShadow: '0 1px 6px rgba(44,36,32,0.06)', overflow: 'hidden', marginTop: 24 }}>
           <div className="timeline-header" style={{ padding: '18px 24px', borderBottom: '1px solid var(--color-warm-border)' }}>
@@ -299,6 +459,28 @@ export default function ChildProfile({
           </div>
         </div>
       )}
+
+      <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid var(--color-warm-border)', display: 'flex', justifyContent: 'center' }}>
+        <button
+          type="button"
+          onClick={openDeleteModal}
+          disabled={busy}
+          style={{
+            padding: '11px 28px',
+            borderRadius: 10,
+            border: '1.5px solid rgba(163,58,58,0.35)',
+            background: 'transparent',
+            color: 'var(--color-danger)',
+            fontSize: 14,
+            cursor: busy ? 'default' : 'pointer',
+            fontFamily: 'var(--font-body)',
+            fontWeight: 600,
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          حذف الابن
+        </button>
+      </div>
 
       <Modal open={operationModal} onClose={() => setOperationModal(false)} title="إضافة ملاحظة رعوية" width={500}>
         <div style={{ marginBottom: 14 }}>
@@ -403,6 +585,33 @@ export default function ChildProfile({
             style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--color-teal)', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600, opacity: eventSaving || !eventTitle.trim() || !eventDate ? 0.5 : 1 }}
           >
             {eventSaving ? '…جاري الحفظ' : 'حفظ الحدث'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={deleteModal} onClose={closeDeleteModal} title="حذف الابن" width={440}>
+        <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--color-text)', lineHeight: 1.6 }}>
+          هل أنت متأكد من حذف <strong>{child.name}</strong>؟ لا يمكن التراجع عن هذا الإجراء.
+        </p>
+        {deleteError && (
+          <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--color-danger)' }}>{deleteError}</div>
+        )}
+        <div className="modal-actions">
+          <button
+            type="button"
+            onClick={closeDeleteModal}
+            disabled={deleting}
+            style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+          >
+            إلغاء
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmDelete}
+            disabled={deleting}
+            style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--color-danger)', color: '#fff', fontSize: 13, cursor: deleting ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600, opacity: deleting ? 0.7 : 1 }}
+          >
+            {deleting ? '…جاري الحذف' : 'تأكيد الحذف'}
           </button>
         </div>
       </Modal>
