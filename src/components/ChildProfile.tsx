@@ -47,6 +47,7 @@ export default function ChildProfile({
   const [operationType, setOperationType] = useState<OperationTypeLabel>('مخصص');
   const [confessionDate, setConfessionDate] = useState(getTodayISO());
   const [confessionNotes, setConfessionNotes] = useState('');
+  const [confessionError, setConfessionError] = useState<string | null>(null);
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState(getTodayISO());
   const [eventMessage, setEventMessage] = useState('');
@@ -109,11 +110,29 @@ export default function ChildProfile({
     setNotesVisible(true);
   };
 
-  const handleSaveConfession = async () => {
-    await onAddConfession(child.id, toISODateTime(confessionDate), confessionNotes.trim() || undefined);
-    setConfessionNotes('');
+  const openConfessionModal = () => {
     setConfessionDate(getTodayISO());
+    setConfessionNotes('');
+    setConfessionError(null);
+    setConfessionModal(true);
+  };
+
+  const closeConfessionModal = () => {
+    if (busy) return;
     setConfessionModal(false);
+    setConfessionError(null);
+  };
+
+  const handleSaveConfession = async () => {
+    setConfessionError(null);
+    try {
+      await onAddConfession(child.id, toISODateTime(confessionDate), confessionNotes.trim() || undefined);
+      setConfessionNotes('');
+      setConfessionDate(getTodayISO());
+      setConfessionModal(false);
+    } catch (err) {
+      setConfessionError(getApiErrorMessage(err, 'تعذّر تسجيل الاعتراف'));
+    }
   };
 
   const openEventModal = () => {
@@ -322,7 +341,7 @@ export default function ChildProfile({
                 </span>
               )}
             </button>
-            <button onClick={() => setConfessionModal(true)} disabled={busy} style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: 'var(--color-teal)', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600 }}>+ تسجيل اعتراف</button>
+            <button onClick={openConfessionModal} disabled={busy} style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: 'var(--color-teal)', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600 }}>+ تسجيل اعتراف</button>
           </div>
         </div>
         <div style={{ padding: '8px 0' }}>
@@ -510,7 +529,7 @@ export default function ChildProfile({
         </div>
       </Modal>
 
-      <Modal open={confessionModal} onClose={() => setConfessionModal(false)} title="تسجيل اعتراف" width={500}>
+      <Modal open={confessionModal} onClose={closeConfessionModal} title="تسجيل اعتراف" width={500}>
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-soft)', marginBottom: 6 }}>تاريخ الاعتراف *</label>
           <input type="date" value={confessionDate} onChange={(e) => setConfessionDate(e.target.value)}
@@ -521,8 +540,11 @@ export default function ChildProfile({
           <textarea value={confessionNotes} onChange={(e) => setConfessionNotes(e.target.value)} placeholder="ملاحظات عن الاعتراف…" rows={3}
             style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10, fontSize: 13, color: 'var(--color-text)', background: 'var(--color-cream)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }} />
         </div>
+        {confessionError && (
+          <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--color-danger, #8A4A4A)' }}>{confessionError}</div>
+        )}
         <div className="modal-actions">
-          <button onClick={() => setConfessionModal(false)} style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>إلغاء</button>
+          <button onClick={closeConfessionModal} style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>إلغاء</button>
           <button onClick={handleSaveConfession} disabled={busy} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--color-teal)', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600 }}>حفظ الاعتراف</button>
         </div>
       </Modal>
