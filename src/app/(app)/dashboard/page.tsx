@@ -42,6 +42,9 @@ export default function DashboardPage() {
       onMarkBirthdayNoted={markBirthdayNoted}
       onTakeBirthdayAction={takeBirthdayAction}
       onNavigateToChild={(id) => router.push(`/children/${id}`)}
+      onNavigateToChildren={() => router.push('/children')}
+      onNavigateToEvents={() => router.push('/events')}
+      onRefreshEvents={refreshDashboard}
     />
   );
 }
