@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
+import EventDetailModal from '@/components/EventDetailModal';
 import ChildAutocomplete from '@/components/ChildAutocomplete';
 import { useApp } from '@/context/AppContext';
 import { createNotification, fetchMonthNotifications, getApiErrorMessage } from '@/lib/api';
@@ -423,46 +424,34 @@ export default function EventsCalendar() {
         )}
       </Modal>
 
-      <Modal
+      <EventDetailModal
         open={popup?.mode === 'event'}
+        event={selectedEvent}
+        childList={childList}
         onClose={closePopup}
-        title={selectedEvent?.title ?? 'تفاصيل الحدث'}
-        width={480}
-      >
-        {selectedEvent && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>التاريخ</div>
-              <div style={{ fontSize: 14, color: 'var(--color-text)', fontWeight: 600 }}>{formatDate(selectedEvent.eventDate)}</div>
-            </div>
-            {selectedEvent.message && (
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>التفاصيل</div>
-                <div style={{ fontSize: 14, color: 'var(--color-text-soft)', lineHeight: 1.6 }}>{selectedEvent.message}</div>
-              </div>
-            )}
-            {(selectedEvent.childName || selectedEvent.childId) && (
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>الابن</div>
-                {selectedEvent.childId ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      closePopup();
-                      router.push(`/children/${selectedEvent.childId}`);
-                    }}
-                    style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 14, color: 'var(--color-teal)', fontFamily: 'var(--font-body)', fontWeight: 600 }}
-                  >
-                    {selectedEvent.childName ?? 'عرض الملف'} ←
-                  </button>
-                ) : (
-                  <div style={{ fontSize: 14, color: 'var(--color-text)' }}>{selectedEvent.childName}</div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
+        onUpdated={(updated) => {
+          setEvents((prev) =>
+            prev
+              .map((ev) => (ev.id === updated.id ? updated : ev))
+              .sort((a, b) => a.eventDate.localeCompare(b.eventDate))
+          );
+          setPopup({ mode: 'event', event: updated });
+          const [y, m] = updated.eventDate.split('-').map(Number);
+          if (y !== year || m !== month) {
+            setYear(y);
+            setMonth(m);
+            closePopup();
+          }
+        }}
+        onDeleted={(eventId) => {
+          setEvents((prev) => prev.filter((ev) => ev.id !== eventId));
+          closePopup();
+        }}
+        onNavigateToChild={(id) => {
+          closePopup();
+          router.push(`/children/${id}`);
+        }}
+      />
     </div>
   );
 }

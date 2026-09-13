@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { ActionType, AlertStatus, AppEvent, BirthdayAlert, Child, ConfessionAlert, DashboardStats, PriestUser } from '@/types';
 import Avatar from '@/components/Avatar';
+import EventDetailModal from '@/components/EventDetailModal';
 import Modal from '@/components/Modal';
 import {
   addDaysISO,
@@ -27,6 +28,9 @@ interface DashboardProps {
   onMarkBirthdayNoted: (childId: string) => Promise<void>;
   onTakeBirthdayAction: (childId: string, actionType: ActionType, actionDate: string, actionNote?: string) => Promise<void>;
   onNavigateToChild: (id: string) => void;
+  onNavigateToChildren: () => void;
+  onNavigateToEvents: () => void;
+  onRefreshEvents: () => Promise<void>;
 }
 
 type OverdueFilter = 30 | 60 | 90 | 180;
@@ -76,7 +80,10 @@ export default function Dashboard({
   onSnoozeConfession,
   onMarkBirthdayNoted,
   onTakeBirthdayAction,
+  onRefreshEvents,
   onNavigateToChild,
+  onNavigateToChildren,
+  onNavigateToEvents,
 }: DashboardProps) {
   const [overdueFilter, setOverdueFilter] = useState<OverdueFilter>(30);
   const [modal, setModal] = useState<ActionModal | null>(null);
@@ -85,6 +92,7 @@ export default function Dashboard({
   const [actionType, setActionType] = useState<ActionType>('اتصال');
   const [snoozeModal, setSnoozeModal] = useState<{ childId: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
 
   const today = getTodayISO();
   const childMap = Object.fromEntries(childList.map((c) => [c.id, c]));
@@ -183,12 +191,29 @@ export default function Dashboard({
 
       <div className="stats-grid">
         {[
-          { label: 'إجمالي الأبناء', value: dashboardStats.childrenCount, color: 'var(--color-teal)', icon: '◎' },
+          { label: 'إجمالي الأبناء', value: dashboardStats.childrenCount, color: 'var(--color-teal)', icon: '◎', onClick: onNavigateToChildren },
           { label: 'متأخرون في الاعتراف', value: dashboardStats.childrenNeedingConfessionCount, color: 'var(--color-warning)', icon: '◷' },
           { label: 'أعياد ميلاد قريبة', value: dashboardStats.birthdaysThisWeekCount, color: 'var(--color-gold)', icon: '❋' },
-          { label: 'أحداث هذا الأسبوع', value: dashboardStats.generalEventsThisWeekCount, color: 'var(--color-olive)', icon: '▦' },
+          { label: 'أحداث هذا الأسبوع', value: dashboardStats.generalEventsThisWeekCount, color: 'var(--color-olive)', icon: '▦', onClick: onNavigateToEvents },
         ].map((stat) => (
-          <div key={stat.label} style={{ background: 'var(--color-card)', borderRadius: 14, padding: '20px 22px', boxShadow: '0 1px 4px rgba(44,36,32,0.06)', border: '1px solid var(--color-warm-border)' }}>
+          <div
+            key={stat.label}
+            role={stat.onClick ? 'button' : undefined}
+            tabIndex={stat.onClick ? 0 : undefined}
+            onClick={stat.onClick}
+            onKeyDown={stat.onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); stat.onClick?.(); } } : undefined}
+            style={{
+              background: 'var(--color-card)',
+              borderRadius: 14,
+              padding: '20px 22px',
+              boxShadow: '0 1px 4px rgba(44,36,32,0.06)',
+              border: '1px solid var(--color-warm-border)',
+              cursor: stat.onClick ? 'pointer' : undefined,
+              transition: stat.onClick ? 'box-shadow 0.15s, transform 0.15s' : undefined,
+            }}
+            onMouseEnter={stat.onClick ? (e) => { e.currentTarget.style.boxShadow = '0 2px 10px rgba(44,36,32,0.1)'; e.currentTarget.style.transform = 'translateY(-1px)'; } : undefined}
+            onMouseLeave={stat.onClick ? (e) => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(44,36,32,0.06)'; e.currentTarget.style.transform = 'none'; } : undefined}
+          >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 20, color: stat.color }}>{stat.icon}</span>
             </div>
@@ -328,7 +353,7 @@ export default function Dashboard({
                 const child = ev.childId ? childMap[ev.childId] : null;
                 const isToday = ev.eventDate === today;
                 return (
-                  <div key={ev.id} style={{ display: 'flex', gap: 14, padding: '14px 24px', borderBottom: '1px solid var(--color-surface)', background: isToday ? 'var(--color-teal-pale)' : 'transparent' }}>
+                  <div key={ev.id} style={{ display: 'flex', gap: 14, padding: '14px 24px', borderBottom: '1px solid var(--color-surface)', background: isToday ? 'var(--color-teal-pale)' : 'transparent', alignItems: 'center' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 48 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: isToday ? 'var(--color-teal)' : 'var(--color-text-soft)', lineHeight: 1 }}>{formatDateShort(ev.eventDate)}</div>
                     </div>
@@ -341,6 +366,14 @@ export default function Dashboard({
                         </button>
                       )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEvent(ev)}
+                      title="عرض الحدث"
+                      style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--color-teal-pale)', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--color-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                    >
+                      ←
+                    </button>
                   </div>
                 );
               })
@@ -408,6 +441,25 @@ export default function Dashboard({
           </button>
         </div>
       </Modal>
+
+      <EventDetailModal
+        open={!!selectedEvent}
+        event={selectedEvent}
+        childList={childList}
+        onClose={() => setSelectedEvent(null)}
+        onUpdated={async (updated) => {
+          setSelectedEvent(updated);
+          await onRefreshEvents();
+        }}
+        onDeleted={async () => {
+          setSelectedEvent(null);
+          await onRefreshEvents();
+        }}
+        onNavigateToChild={(id) => {
+          setSelectedEvent(null);
+          onNavigateToChild(id);
+        }}
+      />
     </div>
   );
 }
