@@ -318,7 +318,7 @@ export default function EventsCalendar() {
                           opacity: ev.isRead ? 0.85 : 1,
                         }}
                       >
-                        {ev.eventTime ? `${ev.eventTime} · ${ev.title}` : ev.title}
+                        {ev.eventTime ? `${formatTime(ev.eventTime)} - ${ev.title}` : ev.title}
                       </button>
                     ))}
                     {dayEvents.length > 3 && (
