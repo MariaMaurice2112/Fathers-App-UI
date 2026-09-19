@@ -57,13 +57,13 @@ export function formatDateShort(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
 }
 
-/** Format HH:MM (or HH:MM:SS) for Arabic display. */
+/** Format HH:MM (or HH:MM:SS) as 12-hour clock, e.g. "09:00 pm". */
 export function formatTime(timeStr: string): string {
   const [hours, minutes] = timeStr.split(':').map(Number);
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return timeStr;
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d.toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
+  const period = hours >= 12 ? 'pm' : 'am';
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${String(hour12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${period}`;
 }
 
 export function getBirthdayRelation(birthdayStr: string): 'yesterday' | 'today' | 'tomorrow' | null {
