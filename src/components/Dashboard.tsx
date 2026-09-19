@@ -357,12 +357,11 @@ export default function Dashboard({
                   <div key={ev.id} style={{ display: 'flex', gap: 14, padding: '14px 24px', borderBottom: '1px solid var(--color-surface)', background: isToday ? 'var(--color-teal-pale)' : 'transparent', alignItems: 'center' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 48 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: isToday ? 'var(--color-teal)' : 'var(--color-text-soft)', lineHeight: 1 }}>{formatDateShort(ev.eventDate)}</div>
-                      {ev.eventTime && (
-                        <div style={{ fontSize: 11, color: isToday ? 'var(--color-teal)' : 'var(--color-text-muted)', marginTop: 4, fontWeight: 600 }}>{formatTime(ev.eventTime)}</div>
-                      )}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, color: 'var(--color-text)', marginBottom: 2, fontWeight: 600 }}>{ev.title}</div>
+                      <div style={{ fontSize: 13, color: 'var(--color-text)', marginBottom: 2, fontWeight: 600 }}>
+                        {ev.eventTime ? `${ev.title} - ${formatTime(ev.eventTime)}` : ev.title}
+                      </div>
                       {ev.message && <div style={{ fontSize: 12, color: 'var(--color-text-soft)', marginBottom: 4 }}>{ev.message}</div>}
                       {child && (
                         <button onClick={() => onNavigateToChild(ev.childId!)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontSize: 12, color: 'var(--color-teal)', fontFamily: 'var(--font-body)', fontWeight: 500 }}>
