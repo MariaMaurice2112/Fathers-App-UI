@@ -57,6 +57,15 @@ export function formatDateShort(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
 }
 
+/** Format HH:MM (or HH:MM:SS) for Arabic display. */
+export function formatTime(timeStr: string): string {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return timeStr;
+  const d = new Date();
+  d.setHours(hours, minutes, 0, 0);
+  return d.toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
+}
+
 export function getBirthdayRelation(birthdayStr: string): 'yesterday' | 'today' | 'tomorrow' | null {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

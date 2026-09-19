@@ -14,6 +14,7 @@ export async function createNotification(data: {
   title: string;
   notificationDate: string;
   message?: string;
+  eventTime?: string | null;
   childId?: string;
 }): Promise<AppEvent> {
   const res = await invokeFunction<{ success: boolean; data: ApiEvent }>('notifications', {
@@ -22,6 +23,7 @@ export async function createNotification(data: {
       title: data.title,
       notification_date: data.notificationDate,
       message: data.message ?? '',
+      event_time: data.eventTime?.trim() ? data.eventTime.trim() : null,
       child_id: data.childId ?? null,
     },
   });
@@ -34,6 +36,7 @@ export async function updateNotification(
     title?: string;
     notificationDate?: string;
     message?: string | null;
+    eventTime?: string | null;
     childId?: string | null;
   }
 ): Promise<AppEvent> {
@@ -41,6 +44,9 @@ export async function updateNotification(
   if (data.title !== undefined) body.title = data.title;
   if (data.notificationDate !== undefined) body.notification_date = data.notificationDate;
   if (data.message !== undefined) body.message = data.message;
+  if (data.eventTime !== undefined) {
+    body.event_time = data.eventTime?.trim() ? data.eventTime.trim() : null;
+  }
   if (data.childId !== undefined) body.child_id = data.childId;
 
   const res = await invokeFunction<{ success: boolean; data: ApiEvent }>(`notifications/${id}`, {

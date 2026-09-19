@@ -75,6 +75,8 @@ export interface AppEvent {
   title: string;
   message?: string;
   eventDate: string;
+  /** Optional HH:MM clock time; omit when unset. */
+  eventTime?: string;
   childId?: string;
   childName?: string;
   isRead: boolean;

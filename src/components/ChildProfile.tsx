@@ -9,6 +9,7 @@ import { OPERATION_TYPE_TO_API } from '@/lib/api/mappers';
 import {
   formatDate,
   formatEgyptianPhoneDisplay,
+  formatTime,
   getAge,
   getDaysDiff,
   getTodayISO,
@@ -50,6 +51,7 @@ export default function ChildProfile({
   const [confessionError, setConfessionError] = useState<string | null>(null);
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState(getTodayISO());
+  const [eventTime, setEventTime] = useState('');
   const [eventMessage, setEventMessage] = useState('');
   const [eventSaving, setEventSaving] = useState(false);
   const [eventError, setEventError] = useState<string | null>(null);
@@ -138,6 +140,7 @@ export default function ChildProfile({
   const openEventModal = () => {
     setEventTitle('');
     setEventDate(getTodayISO());
+    setEventTime('');
     setEventMessage('');
     setEventError(null);
     setEventModal(true);
@@ -165,6 +168,7 @@ export default function ChildProfile({
       const created = await createNotification({
         title: eventTitle.trim(),
         notificationDate: eventDate,
+        eventTime: eventTime.trim() || null,
         message: eventMessage.trim() || undefined,
         childId: child.id,
       });
@@ -176,6 +180,7 @@ export default function ChildProfile({
       setEventModal(false);
       setEventTitle('');
       setEventDate(getTodayISO());
+      setEventTime('');
       setEventMessage('');
     } catch (err) {
       setEventError(getApiErrorMessage(err, 'تعذّر إضافة الحدث'));
@@ -415,6 +420,9 @@ export default function ChildProfile({
                   <div style={{ flex: 1, paddingTop: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{formatDate(ev.eventDate)}</span>
+                      {ev.eventTime && (
+                        <span style={{ fontSize: 12, color: 'var(--color-teal)', fontWeight: 600 }}>{formatTime(ev.eventTime)}</span>
+                      )}
                       <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, background: 'var(--color-teal-pale)', color: 'var(--color-teal)' }}>حدث</span>
                     </div>
                     <div style={{ fontSize: 14, color: 'var(--color-text)', fontWeight: 600, lineHeight: 1.5 }}>{ev.title}</div>
@@ -573,6 +581,16 @@ export default function ChildProfile({
             type="date"
             value={eventDate}
             onChange={(e) => setEventDate(e.target.value)}
+            disabled={eventSaving}
+            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10, fontSize: 13, background: 'var(--color-cream)', outline: 'none', boxSizing: 'border-box', color: 'var(--color-text)' }}
+          />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-soft)', marginBottom: 6 }}>الوقت (اختياري)</label>
+          <input
+            type="time"
+            value={eventTime}
+            onChange={(e) => setEventTime(e.target.value)}
             disabled={eventSaving}
             style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10, fontSize: 13, background: 'var(--color-cream)', outline: 'none', boxSizing: 'border-box', color: 'var(--color-text)' }}
           />

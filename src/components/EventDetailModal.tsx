@@ -5,7 +5,7 @@ import Modal from '@/components/Modal';
 import ChildAutocomplete from '@/components/ChildAutocomplete';
 import { deleteNotification, getApiErrorMessage, updateNotification } from '@/lib/api';
 import type { AppEvent, Child } from '@/types';
-import { formatDate } from '@/utils';
+import { formatDate, formatTime } from '@/utils';
 
 type ModalMode = 'view' | 'edit' | 'delete';
 
@@ -31,6 +31,7 @@ export default function EventDetailModal({
   const [mode, setMode] = useState<ModalMode>('view');
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
   const [message, setMessage] = useState('');
   const [childId, setChildId] = useState('');
   const [busy, setBusy] = useState(false);
@@ -41,6 +42,7 @@ export default function EventDetailModal({
     setMode('view');
     setTitle(event.title);
     setDate(event.eventDate);
+    setTime(event.eventTime ?? '');
     setMessage(event.message ?? '');
     setChildId(event.childId ?? '');
     setError(null);
@@ -69,6 +71,7 @@ export default function EventDetailModal({
       const updated = await updateNotification(event.id, {
         title: title.trim(),
         notificationDate: date,
+        eventTime: time.trim() || null,
         message: message.trim() || null,
         childId: childId || null,
       });
@@ -109,6 +112,12 @@ export default function EventDetailModal({
             <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>التاريخ</div>
             <div style={{ fontSize: 14, color: 'var(--color-text)', fontWeight: 600 }}>{formatDate(event.eventDate)}</div>
           </div>
+          {event.eventTime && (
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>الوقت</div>
+              <div style={{ fontSize: 14, color: 'var(--color-text)', fontWeight: 600 }}>{formatTime(event.eventTime)}</div>
+            </div>
+          )}
           {event.message && (
             <div>
               <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>التفاصيل</div>
@@ -147,6 +156,7 @@ export default function EventDetailModal({
               onClick={() => {
                 setTitle(event.title);
                 setDate(event.eventDate);
+                setTime(event.eventTime ?? '');
                 setMessage(event.message ?? '');
                 setChildId(event.childId ?? '');
                 setError(null);
@@ -179,6 +189,16 @@ export default function EventDetailModal({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
+              disabled={busy}
+              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10, fontSize: 13, background: 'var(--color-cream)', outline: 'none', boxSizing: 'border-box', color: 'var(--color-text)' }}
+            />
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-soft)', marginBottom: 6 }}>الوقت (اختياري)</label>
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
               disabled={busy}
               style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10, fontSize: 13, background: 'var(--color-cream)', outline: 'none', boxSizing: 'border-box', color: 'var(--color-text)' }}
             />

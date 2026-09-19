@@ -8,7 +8,7 @@ import ChildAutocomplete from '@/components/ChildAutocomplete';
 import { useApp } from '@/context/AppContext';
 import { createNotification, fetchMonthNotifications, getApiErrorMessage } from '@/lib/api';
 import type { AppEvent } from '@/types';
-import { formatDate, getTodayISO } from '@/utils';
+import { formatDate, formatTime, getTodayISO } from '@/utils';
 
 const WEEKDAYS = ['سبت', 'أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة'];
 
@@ -48,6 +48,7 @@ export default function EventsCalendar() {
   const [addOpen, setAddOpen] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formDate, setFormDate] = useState(getTodayISO());
+  const [formTime, setFormTime] = useState('');
   const [formMessage, setFormMessage] = useState('');
   const [formChildId, setFormChildId] = useState('');
   const [saving, setSaving] = useState(false);
@@ -84,6 +85,9 @@ export default function EventsCalendar() {
       const list = map.get(ev.eventDate) ?? [];
       list.push(ev);
       map.set(ev.eventDate, list);
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => (a.eventTime ?? '99:99').localeCompare(b.eventTime ?? '99:99'));
     }
     return map;
   }, [events]);
@@ -129,6 +133,7 @@ export default function EventsCalendar() {
   const openAddModal = (prefillDate?: string) => {
     setFormTitle('');
     setFormDate(prefillDate ?? today);
+    setFormTime('');
     setFormMessage('');
     setFormChildId('');
     setFormError(null);
@@ -157,6 +162,7 @@ export default function EventsCalendar() {
       const created = await createNotification({
         title: formTitle.trim(),
         notificationDate: formDate,
+        eventTime: formTime.trim() || null,
         message: formMessage.trim() || undefined,
         childId: formChildId || undefined,
       });
@@ -312,7 +318,7 @@ export default function EventsCalendar() {
                           opacity: ev.isRead ? 0.85 : 1,
                         }}
                       >
-                        {ev.title}
+                        {ev.eventTime ? `${ev.eventTime} · ${ev.title}` : ev.title}
                       </button>
                     ))}
                     {dayEvents.length > 3 && (
@@ -345,6 +351,16 @@ export default function EventsCalendar() {
             type="date"
             value={formDate}
             onChange={(e) => setFormDate(e.target.value)}
+            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10, fontSize: 13, background: 'var(--color-cream)', outline: 'none', boxSizing: 'border-box', color: 'var(--color-text)' }}
+          />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-soft)', marginBottom: 6 }}>الوقت (اختياري)</label>
+          <input
+            type="time"
+            value={formTime}
+            onChange={(e) => setFormTime(e.target.value)}
+            disabled={saving}
             style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10, fontSize: 13, background: 'var(--color-cream)', outline: 'none', boxSizing: 'border-box', color: 'var(--color-text)' }}
           />
         </div>
@@ -417,6 +433,9 @@ export default function EventsCalendar() {
                 }}
               >
                 <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>{ev.title}</div>
+                {ev.eventTime && (
+                  <div style={{ fontSize: 12, color: 'var(--color-teal)', fontWeight: 600, marginBottom: 2 }}>{formatTime(ev.eventTime)}</div>
+                )}
                 {ev.message && <div style={{ fontSize: 12, color: 'var(--color-text-soft)' }}>{ev.message}</div>}
               </button>
             ))}

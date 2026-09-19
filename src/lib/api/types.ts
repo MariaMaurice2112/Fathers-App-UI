@@ -68,6 +68,8 @@ export interface ApiEvent {
   message?: string | null;
   event_date?: string;
   notification_date?: string;
+  /** Optional HH:MM or HH:MM:SS; null when unset. */
+  event_time?: string | null;
   status?: string;
   is_read: boolean;
   created_at?: string;

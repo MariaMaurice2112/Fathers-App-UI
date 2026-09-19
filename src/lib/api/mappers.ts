@@ -156,10 +156,19 @@ export function mapAppEvents(events: ApiEvent[]): AppEvent[] {
     title: event.title,
     message: event.message ?? undefined,
     eventDate: event.event_date ?? event.notification_date ?? '',
+    eventTime: normalizeEventTime(event.event_time),
     childId: event.child_id ?? undefined,
     childName: event.child_name ?? undefined,
     isRead: event.is_read,
   }));
+}
+
+/** Normalize Postgres `time` (HH:MM:SS) to HTML time input value (HH:MM). */
+function normalizeEventTime(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.slice(0, 5);
 }
 
 export function childToCreatePayload(data: {
