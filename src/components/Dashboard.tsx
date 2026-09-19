@@ -9,6 +9,7 @@ import {
   addDaysISO,
   formatDate,
   formatDateShort,
+  formatTime,
   getAge,
   getDaysDiff,
   getTodayISO,
@@ -356,6 +357,9 @@ export default function Dashboard({
                   <div key={ev.id} style={{ display: 'flex', gap: 14, padding: '14px 24px', borderBottom: '1px solid var(--color-surface)', background: isToday ? 'var(--color-teal-pale)' : 'transparent', alignItems: 'center' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 48 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: isToday ? 'var(--color-teal)' : 'var(--color-text-soft)', lineHeight: 1 }}>{formatDateShort(ev.eventDate)}</div>
+                      {ev.eventTime && (
+                        <div style={{ fontSize: 11, color: isToday ? 'var(--color-teal)' : 'var(--color-text-muted)', marginTop: 4, fontWeight: 600 }}>{formatTime(ev.eventTime)}</div>
+                      )}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, color: 'var(--color-text)', marginBottom: 2, fontWeight: 600 }}>{ev.title}</div>
