@@ -210,128 +210,149 @@ export default function EventsCalendar() {
       </div>
 
       <div style={{ background: 'var(--color-card)', borderRadius: 16, border: '1px solid var(--color-warm-border)', boxShadow: '0 1px 6px rgba(44,36,32,0.06)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '16px 20px', borderBottom: '1px solid var(--color-warm-border)', flexWrap: 'wrap' }}>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', borderBottom: '1px solid var(--color-warm-border)', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={goNext}
-            style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+            style={{ padding: '8px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}
           >
-            الشهر التالي ←
+            ← التالي
           </button>
-          <div style={{ fontSize: 'clamp(16px, 3vw, 18px)', fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--color-text)' }}>
+          <div style={{ fontSize: 'clamp(15px, 3.5vw, 18px)', fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--color-text)', textAlign: 'center', flex: '1 1 auto', order: -1, width: '100%' }}>
             {monthLabel(year, month)}
           </div>
           <button
             type="button"
             onClick={goPrev}
-            style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+            style={{ padding: '8px 12px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}
           >
-            → الشهر السابق
+            السابق →
           </button>
         </div>
 
         {error && (
-          <div style={{ padding: '12px 20px', background: 'var(--color-surface)', color: 'var(--color-danger, #8A4A4A)', fontSize: 13, borderBottom: '1px solid var(--color-warm-border)' }}>
+          <div style={{ padding: '12px 16px', background: 'var(--color-surface)', color: 'var(--color-danger, #8A4A4A)', fontSize: 13, borderBottom: '1px solid var(--color-warm-border)' }}>
             {error}
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--color-warm-border)', background: 'var(--color-surface)' }}>
-          {WEEKDAYS.map((label) => (
-            <div key={label} style={{ padding: '10px 6px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>
-              {label}
-            </div>
-          ))}
-        </div>
+        {/* Horizontal scroll wrapper for mobile */}
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ minWidth: 560 }}>
 
-        {loading && events.length === 0 ? (
-          <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>جاري تحميل الأحداث…</div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-            {cells.map((cell, idx) => {
-              if (!cell.date || cell.day == null) {
-                return <div key={`empty-${idx}`} style={{ minHeight: 96, background: 'var(--color-surface)', borderBottom: '1px solid var(--color-warm-border)', borderLeft: '1px solid var(--color-warm-border)' }} />;
-              }
-
-              const dayEvents = eventsByDate.get(cell.date) ?? [];
-              const isToday = cell.date === today;
-              const hasEvents = dayEvents.length > 0;
-
-              return (
-                <div
-                  key={cell.date}
-                  role={hasEvents ? 'button' : undefined}
-                  tabIndex={hasEvents ? 0 : undefined}
-                  onClick={() => openDay(cell.date!, dayEvents)}
-                  onKeyDown={(e) => {
-                    if (hasEvents && (e.key === 'Enter' || e.key === ' ')) {
-                      e.preventDefault();
-                      openDay(cell.date!, dayEvents);
-                    }
-                  }}
-                  style={{
-                    minHeight: 108,
-                    padding: 8,
-                    borderBottom: '1px solid var(--color-warm-border)',
-                    borderLeft: '1px solid var(--color-warm-border)',
-                    background: isToday ? 'var(--color-teal-pale)' : 'var(--color-card)',
-                    cursor: hasEvents ? 'pointer' : 'default',
-                    opacity: loading ? 0.7 : 1,
-                  }}
-                >
-                  <div style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 13,
-                    fontWeight: isToday ? 700 : 500,
-                    color: isToday ? '#fff' : 'var(--color-text-soft)',
-                    background: isToday ? 'var(--color-teal)' : 'transparent',
-                    marginBottom: 6,
-                  }}>
-                    {cell.day}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {dayEvents.slice(0, 3).map((ev) => (
-                      <button
-                        key={ev.id}
-                        type="button"
-                        onClick={(e) => openEvent(ev, e)}
-                        title={ev.title}
-                        style={{
-                          border: 'none',
-                          borderRadius: 6,
-                          padding: '4px 6px',
-                          textAlign: 'right',
-                          fontSize: 11,
-                          lineHeight: 1.3,
-                          cursor: 'pointer',
-                          fontFamily: 'var(--font-body)',
-                          background: ev.isRead ? 'var(--color-surface)' : 'var(--color-teal)',
-                          color: ev.isRead ? 'var(--color-text-soft)' : '#fff',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          opacity: ev.isRead ? 0.85 : 1,
-                        }}
-                      >
-                        {ev.eventTime ? `${ev.title} - ${formatTime(ev.eventTime)}` : ev.title}
-                      </button>
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', paddingInline: 4 }}>
-                        +{dayEvents.length - 3} أخرى
-                      </div>
-                    )}
-                  </div>
+            {/* Weekday header */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--color-warm-border)', background: 'var(--color-surface)' }}>
+              {WEEKDAYS.map((label) => (
+                <div key={label} style={{ padding: '8px 4px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                  {label}
                 </div>
-              );
-            })}
+              ))}
+            </div>
+
+            {loading && events.length === 0 ? (
+              <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>جاري تحميل الأحداث…</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                {cells.map((cell, idx) => {
+                  if (!cell.date || cell.day == null) {
+                    return (
+                      <div
+                        key={`empty-${idx}`}
+                        style={{
+                          minHeight: 84,
+                          background: 'var(--color-surface)',
+                          borderBottom: '1px solid var(--color-warm-border)',
+                          borderInlineEnd: '1px solid var(--color-warm-border)',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    );
+                  }
+
+                  const dayEvents = eventsByDate.get(cell.date) ?? [];
+                  const isToday = cell.date === today;
+                  const hasEvents = dayEvents.length > 0;
+
+                  return (
+                    <div
+                      key={cell.date}
+                      role={hasEvents ? 'button' : undefined}
+                      tabIndex={hasEvents ? 0 : undefined}
+                      onClick={() => openDay(cell.date!, dayEvents)}
+                      onKeyDown={(e) => {
+                        if (hasEvents && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault();
+                          openDay(cell.date!, dayEvents);
+                        }
+                      }}
+                      style={{
+                        minHeight: 84,
+                        padding: 6,
+                        borderBottom: '1px solid var(--color-warm-border)',
+                        borderInlineEnd: '1px solid var(--color-warm-border)',
+                        background: isToday ? 'var(--color-teal-pale)' : 'var(--color-card)',
+                        cursor: hasEvents ? 'pointer' : 'default',
+                        opacity: loading ? 0.7 : 1,
+                        boxSizing: 'border-box',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 7,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 12,
+                        fontWeight: isToday ? 700 : 500,
+                        color: isToday ? '#fff' : 'var(--color-text-soft)',
+                        background: isToday ? 'var(--color-teal)' : 'transparent',
+                        marginBottom: 4,
+                      }}>
+                        {cell.day}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {dayEvents.slice(0, 2).map((ev) => (
+                          <button
+                            key={ev.id}
+                            type="button"
+                            onClick={(e) => openEvent(ev, e)}
+                            title={ev.title}
+                            style={{
+                              border: 'none',
+                              borderRadius: 5,
+                              padding: '3px 4px',
+                              textAlign: 'right',
+                              fontSize: 10,
+                              lineHeight: 1.25,
+                              cursor: 'pointer',
+                              fontFamily: 'var(--font-body)',
+                              background: ev.isRead ? 'var(--color-surface)' : 'var(--color-teal)',
+                              color: ev.isRead ? 'var(--color-text-soft)' : '#fff',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              opacity: ev.isRead ? 0.85 : 1,
+                            }}
+                          >
+                            {ev.eventTime ? `${ev.title} - ${formatTime(ev.eventTime)}` : ev.title}
+                          </button>
+                        ))}
+                        {dayEvents.length > 2 && (
+                          <div style={{ fontSize: 10, color: 'var(--color-text-muted)', paddingInline: 3 }}>
+                            +{dayEvents.length - 2} أخرى
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <Modal open={addOpen} onClose={closeAddModal} title="إضافة حدث" width={500}>
