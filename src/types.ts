@@ -1,7 +1,7 @@
 export type ConfessionStatus = 'NO_CONFESSION_RECORDED' | 'OVERDUE' | 'UP_TO_DATE';
 export type AlertStatus = 'pending' | 'noted' | 'action_taken';
 export type ActionType = 'اتصال' | 'زيارة' | 'رسالة' | 'متابعة أخرى';
-export type OperationTypeLabel = 'مخصص' | 'تذكير' | 'زيارة' | 'مكالمة';
+export type OperationTypeLabel = 'مخصص' | 'تذكير' | 'زيارة' | 'مكالمة' | 'تدريب';
 export type MaritalStatus = 'single' | 'married';
 
 export interface Operation {

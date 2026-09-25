@@ -31,6 +31,7 @@ export const OPERATION_TYPE_TO_API: Record<string, string> = {
   'عيد ميلاد': 'birthday',
   تذكير: 'reminder',
   مخصص: 'custom',
+  تدريب: 'training',
 };
 
 export const OPERATION_TYPE_FROM_API: Record<string, string> = Object.fromEntries(

@@ -9,7 +9,7 @@ const AVATAR_COLORS = [
 ];
 
 export const OPERATION_TYPE_LABELS: OperationTypeLabel[] = [
-  'مخصص',  'زيارة', 'مكالمة',
+  'مخصص', 'زيارة', 'مكالمة', 'تدريب',
 ];
 
 export const OPERATION_TYPE_ICONS: Record<string, string> = {
@@ -21,6 +21,7 @@ export const OPERATION_TYPE_ICONS: Record<string, string> = {
   birthday: '🎂',
   reminder: '🔔',
   custom: '📝',
+  training: '📖',
   مكالمة: '📞',
   زيارة: '🏠',
   رسالة: '💬',
@@ -29,7 +30,192 @@ export const OPERATION_TYPE_ICONS: Record<string, string> = {
   'عيد ميلاد': '🎂',
   تذكير: '🔔',
   مخصص: '📝',
+  تدريب: '📖',
 };
+
+export const TRAINING_PRAYER_OPTIONS = [
+  'باكر',
+  'باكر / غروب / نوم',
+  'باكر / نوم',
+] as const;
+
+export const TRAINING_BIBLE_OPTIONS = [
+  'اصحاح عهد جديد',
+  'اصحاح عهد قديم',
+  'اصحاح عهد جديد و اصحاح عهد قديم',
+] as const;
+
+export const TRAINING_SECTION_HEADERS = {
+  prayers: 'الصلوات:',
+  bible: 'الكتاب المقدس:',
+  other: 'اخرى:',
+} as const;
+
+function extractKnownOptions(text: string, options: readonly string[]): {
+  matched: string[];
+  leftover: string;
+} {
+  const sorted = [...options].sort((a, b) => b.length - a.length);
+  const matched: string[] = [];
+  let remaining = text.trim();
+
+  let changed = true;
+  while (changed && remaining) {
+    changed = false;
+    for (const option of sorted) {
+      if (remaining === option) {
+        if (!matched.includes(option)) matched.push(option);
+        remaining = '';
+        changed = true;
+        break;
+      }
+      if (remaining.startsWith(`${option} `)) {
+        if (!matched.includes(option)) matched.push(option);
+        remaining = remaining.slice(option.length).trim();
+        changed = true;
+        break;
+      }
+      const mid = ` ${option} `;
+      const idx = remaining.indexOf(mid);
+      if (idx !== -1) {
+        if (!matched.includes(option)) matched.push(option);
+        remaining = `${remaining.slice(0, idx)} ${remaining.slice(idx + mid.length)}`.trim();
+        changed = true;
+        break;
+      }
+      if (remaining.endsWith(` ${option}`)) {
+        if (!matched.includes(option)) matched.push(option);
+        remaining = remaining.slice(0, remaining.length - option.length - 1).trim();
+        changed = true;
+        break;
+      }
+    }
+  }
+
+  return { matched, leftover: remaining };
+}
+
+export function composeTrainingNote(
+  prayers: string[],
+  bible: string[],
+  other: string
+): string {
+  const parts: string[] = [];
+  if (prayers.length > 0) {
+    parts.push(`${TRAINING_SECTION_HEADERS.prayers} ${prayers.join(' ')}`);
+  }
+  if (bible.length > 0) {
+    parts.push(`${TRAINING_SECTION_HEADERS.bible} ${bible.join(' ')}`);
+  }
+  const otherTrimmed = other.trim();
+  if (otherTrimmed) {
+    parts.push(`${TRAINING_SECTION_HEADERS.other} ${otherTrimmed}`);
+  }
+  return parts.join('\n');
+}
+
+export function parseTrainingNote(note: string): {
+  prayers: string[];
+  bible: string[];
+  other: string;
+} {
+  const prayerSet = new Set<string>(TRAINING_PRAYER_OPTIONS);
+  const bibleSet = new Set<string>(TRAINING_BIBLE_OPTIONS);
+  const prayers: string[] = [];
+  const bible: string[] = [];
+  const otherLines: string[] = [];
+
+  const lines = note.split(/\r?\n/);
+  let section: 'prayers' | 'bible' | 'other' | null = null;
+
+  const isPrayerHeader = (line: string) =>
+    line === TRAINING_SECTION_HEADERS.prayers || line === 'الصلوات' || line.startsWith('الصلوات:');
+  const isBibleHeader = (line: string) =>
+    line === TRAINING_SECTION_HEADERS.bible ||
+    line === 'الكتاب المقدس' ||
+    line === '(الكتاب المقدس):' ||
+    line === '(الكتاب المقدس)' ||
+    line.startsWith('الكتاب المقدس:') ||
+    line.startsWith('(الكتاب المقدس):');
+  const isOtherHeader = (line: string) =>
+    line === TRAINING_SECTION_HEADERS.other || line === 'اخرى' || line.startsWith('اخرى:');
+
+  const contentAfterHeader = (line: string, headers: string[]) => {
+    for (const header of headers) {
+      if (line === header || line === header.replace(/:$/, '')) return '';
+      if (line.startsWith(`${header} `) || (header.endsWith(':') && line.startsWith(header))) {
+        return line.slice(header.length).trim();
+      }
+    }
+    return '';
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    if (isPrayerHeader(line)) {
+      section = 'prayers';
+      const rest = contentAfterHeader(line, ['الصلوات:', 'الصلوات']);
+      if (rest) {
+        const { matched, leftover } = extractKnownOptions(rest, TRAINING_PRAYER_OPTIONS);
+        for (const item of matched) {
+          if (!prayers.includes(item)) prayers.push(item);
+        }
+        if (leftover) otherLines.push(leftover);
+      }
+      continue;
+    }
+    if (isBibleHeader(line)) {
+      section = 'bible';
+      const rest = contentAfterHeader(line, ['الكتاب المقدس:', '(الكتاب المقدس):', 'الكتاب المقدس', '(الكتاب المقدس)']);
+      if (rest) {
+        const { matched, leftover } = extractKnownOptions(rest, TRAINING_BIBLE_OPTIONS);
+        for (const item of matched) {
+          if (!bible.includes(item)) bible.push(item);
+        }
+        if (leftover) otherLines.push(leftover);
+      }
+      continue;
+    }
+    if (isOtherHeader(line)) {
+      section = 'other';
+      const rest = contentAfterHeader(line, ['اخرى:', 'اخرى']);
+      if (rest) otherLines.push(rest);
+      continue;
+    }
+
+    if (section === 'prayers') {
+      if (prayerSet.has(line) && !prayers.includes(line)) prayers.push(line);
+      else {
+        const { matched, leftover } = extractKnownOptions(line, TRAINING_PRAYER_OPTIONS);
+        for (const item of matched) {
+          if (!prayers.includes(item)) prayers.push(item);
+        }
+        if (leftover) otherLines.push(leftover);
+      }
+    } else if (section === 'bible') {
+      if (bibleSet.has(line) && !bible.includes(line)) bible.push(line);
+      else {
+        const { matched, leftover } = extractKnownOptions(line, TRAINING_BIBLE_OPTIONS);
+        for (const item of matched) {
+          if (!bible.includes(item)) bible.push(item);
+        }
+        if (leftover) otherLines.push(leftover);
+      }
+    } else if (section === 'other') {
+      otherLines.push(line);
+    } else if (prayerSet.has(line) && !prayers.includes(line)) {
+      prayers.push(line);
+    } else if (bibleSet.has(line) && !bible.includes(line)) {
+      bible.push(line);
+    } else {
+      otherLines.push(line);
+    }
+  }
+
+  return { prayers, bible, other: otherLines.join('\n') };
+}
 
 export function getAvatarColor(id: string): string {
   const hash = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);

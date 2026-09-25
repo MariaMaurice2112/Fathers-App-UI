@@ -5,8 +5,9 @@ import type { AppEvent, Child, OperationTypeLabel } from '@/types';
 import Avatar from '@/components/Avatar';
 import Modal from '@/components/Modal';
 import { createNotification, fetchChildEvents, getApiErrorMessage } from '@/lib/api';
-import { OPERATION_TYPE_TO_API } from '@/lib/api/mappers';
+import { OPERATION_TYPE_FROM_API, OPERATION_TYPE_TO_API } from '@/lib/api/mappers';
 import {
+  composeTrainingNote,
   formatDate,
   formatEgyptianPhoneDisplay,
   formatTime,
@@ -16,7 +17,10 @@ import {
   normalizeEgyptianPhone,
   OPERATION_TYPE_ICONS,
   OPERATION_TYPE_LABELS,
+  parseTrainingNote,
   toISODateTime,
+  TRAINING_BIBLE_OPTIONS,
+  TRAINING_PRAYER_OPTIONS,
 } from '@/utils';
 
 interface ChildProfileProps {
@@ -26,6 +30,14 @@ interface ChildProfileProps {
   onEdit: () => void;
   onDelete: (childId: string) => Promise<void>;
   onAddOperation: (childId: string, type: string, operationDate: string, note?: string) => Promise<void>;
+  onEditOperation: (
+    childId: string,
+    operationId: string,
+    type: string,
+    operationDate: string,
+    note?: string
+  ) => Promise<void>;
+  onDeleteOperation: (childId: string, operationId: string) => Promise<void>;
   onAddConfession: (childId: string, confessionAt: string, notes?: string) => Promise<void>;
 }
 
@@ -36,14 +48,26 @@ export default function ChildProfile({
   onEdit,
   onDelete,
   onAddOperation,
+  onEditOperation,
+  onDeleteOperation,
   onAddConfession,
 }: ChildProfileProps) {
   const [operationModal, setOperationModal] = useState(false);
+  const [editingOperationId, setEditingOperationId] = useState<string | null>(null);
+  const [preservedApiType, setPreservedApiType] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
+  const [deleteOperationModal, setDeleteOperationModal] = useState(false);
+  const [deletingOperationId, setDeletingOperationId] = useState<string | null>(null);
+  const [deleteOperationError, setDeleteOperationError] = useState<string | null>(null);
+  const [deletingOperation, setDeletingOperation] = useState(false);
   const [confessionModal, setConfessionModal] = useState(false);
   const [eventModal, setEventModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [notesVisible, setNotesVisible] = useState(false);
   const [noteText, setNoteText] = useState('');
+  const [trainingPrayers, setTrainingPrayers] = useState<string[]>([]);
+  const [trainingBible, setTrainingBible] = useState<string[]>([]);
+  const [trainingOther, setTrainingOther] = useState('');
   const [operationDate, setOperationDate] = useState(getTodayISO());
   const [operationType, setOperationType] = useState<OperationTypeLabel>('مخصص');
   const [confessionDate, setConfessionDate] = useState(getTodayISO());
@@ -64,7 +88,11 @@ export default function ChildProfile({
   const age = child.birthday ? getAge(child.birthday) : null;
   const confessionDays = child.latestConfessionAt ? getDaysDiff(child.latestConfessionAt) : null;
   const overdueConfession = child.needsConfession;
-  const busy = saving || eventSaving || deleting;
+  const busy = saving || eventSaving || deleting || deletingOperation;
+
+  const operationPendingDelete = deletingOperationId
+    ? child.operations.find((op) => op.id === deletingOperationId)
+    : undefined;
 
   const loadChildEvents = useCallback(async () => {
     setEventsLoading(true);
@@ -93,23 +121,148 @@ export default function ChildProfile({
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const notes = [...child.operations]
-    .map((op) => ({
-      date: op.operationDate,
-      label: op.type,
-      text: op.note ?? op.type,
-      icon: OPERATION_TYPE_ICONS[op.type] ?? '📝',
-    }))
+    .map((op) => {
+      const typeLabel = OPERATION_TYPE_FROM_API[op.type] ?? op.type;
+      return {
+        id: op.id,
+        date: op.operationDate,
+        type: op.type,
+        label: typeLabel,
+        text: op.note ?? typeLabel,
+        icon: OPERATION_TYPE_ICONS[op.type] ?? OPERATION_TYPE_ICONS[typeLabel] ?? '📝',
+      };
+    })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const handleSaveOperation = async () => {
-    if (!noteText.trim()) return;
-    const apiType = OPERATION_TYPE_TO_API[operationType] ?? 'custom';
-    await onAddOperation(child.id, apiType, operationDate, noteText.trim());
+  const resetOperationForm = () => {
+    setEditingOperationId(null);
+    setPreservedApiType(null);
     setNoteText('');
+    setTrainingPrayers([]);
+    setTrainingBible([]);
+    setTrainingOther('');
     setOperationDate(getTodayISO());
     setOperationType('مخصص');
+    setOperationError(null);
+  };
+
+  const clearTrainingFields = () => {
+    setTrainingPrayers([]);
+    setTrainingBible([]);
+    setTrainingOther('');
+  };
+
+  const handleOperationTypeChange = (nextType: OperationTypeLabel) => {
+    setOperationType(nextType);
+    if (nextType !== 'تدريب') {
+      clearTrainingFields();
+    } else {
+      setNoteText('');
+    }
+  };
+
+  const toggleTrainingOption = (
+    value: string,
+    selected: string[],
+    setSelected: (next: string[]) => void
+  ) => {
+    setSelected(
+      selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value]
+    );
+  };
+
+  const openAddOperationModal = () => {
+    resetOperationForm();
+    setOperationModal(true);
+  };
+
+  const openEditOperationModal = (operationId: string) => {
+    const op = child.operations.find((o) => o.id === operationId);
+    if (!op) return;
+    const mappedLabel = OPERATION_TYPE_FROM_API[op.type];
+    const isKnownLabel = (OPERATION_TYPE_LABELS as string[]).includes(mappedLabel ?? '');
+    const nextType = isKnownLabel ? (mappedLabel as OperationTypeLabel) : 'مخصص';
+    setEditingOperationId(op.id);
+    setPreservedApiType(isKnownLabel ? null : op.type);
+    setOperationDate(op.operationDate.slice(0, 10));
+    setOperationType(nextType);
+    setOperationError(null);
+    if (nextType === 'تدريب') {
+      const parsed = parseTrainingNote(op.note ?? '');
+      setTrainingPrayers(parsed.prayers);
+      setTrainingBible(parsed.bible);
+      setTrainingOther(parsed.other);
+      setNoteText('');
+    } else {
+      setTrainingPrayers([]);
+      setTrainingBible([]);
+      setTrainingOther('');
+      setNoteText(op.note ?? '');
+    }
+    setOperationModal(true);
+  };
+
+  const closeOperationModal = () => {
+    if (busy) return;
     setOperationModal(false);
-    setNotesVisible(true);
+    resetOperationForm();
+  };
+
+  const trainingNoteValid =
+    trainingPrayers.length > 0 || trainingBible.length > 0 || trainingOther.trim().length > 0;
+  const operationNoteValid = operationType === 'تدريب' ? trainingNoteValid : noteText.trim().length > 0;
+
+  const handleSaveOperation = async () => {
+    if (!operationNoteValid) return;
+    setOperationError(null);
+    const selectedApiType = OPERATION_TYPE_TO_API[operationType] ?? 'custom';
+    const apiType =
+      preservedApiType && operationType === 'مخصص' ? preservedApiType : selectedApiType;
+    const notePayload =
+      operationType === 'تدريب'
+        ? composeTrainingNote(trainingPrayers, trainingBible, trainingOther)
+        : noteText.trim();
+    try {
+      if (editingOperationId) {
+        await onEditOperation(child.id, editingOperationId, apiType, operationDate, notePayload);
+      } else {
+        await onAddOperation(child.id, apiType, operationDate, notePayload);
+      }
+      resetOperationForm();
+      setOperationModal(false);
+      setNotesVisible(true);
+    } catch (err) {
+      setOperationError(getApiErrorMessage(err, editingOperationId ? 'تعذّر تعديل الملاحظة' : 'تعذّر حفظ الملاحظة'));
+    }
+  };
+
+  const openDeleteOperationModal = (operationId: string) => {
+    setDeletingOperationId(operationId);
+    setDeleteOperationError(null);
+    setDeleteOperationModal(true);
+  };
+
+  const closeDeleteOperationModal = () => {
+    if (deletingOperation) return;
+    setDeleteOperationModal(false);
+    setDeletingOperationId(null);
+    setDeleteOperationError(null);
+  };
+
+  const handleConfirmDeleteOperation = async () => {
+    if (!deletingOperationId) return;
+    setDeletingOperation(true);
+    setDeleteOperationError(null);
+    try {
+      await onDeleteOperation(child.id, deletingOperationId);
+      setDeleteOperationModal(false);
+      setDeletingOperationId(null);
+      setNotesVisible(true);
+    } catch (err) {
+      setDeleteOperationError(getApiErrorMessage(err, 'تعذّر حذف الملاحظة'));
+    } finally {
+      setDeletingOperation(false);
+    }
   };
 
   const openConfessionModal = () => {
@@ -453,7 +606,7 @@ export default function ChildProfile({
               >
                 ✕
               </button>
-              <button onClick={() => setOperationModal(true)} disabled={busy} style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: 'var(--color-teal)', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600 }}>+ إضافة ملاحظة</button>
+              <button onClick={openAddOperationModal} disabled={busy} style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: 'var(--color-teal)', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600 }}>+ إضافة ملاحظة</button>
             </div>
           </div>
           <div style={{ padding: '8px 0' }}>
@@ -465,7 +618,7 @@ export default function ChildProfile({
             ) : (
               <div style={{ padding: '16px 24px' }}>
                 {notes.map((ev, i) => (
-                  <div key={`note-${ev.date}-${i}`} style={{ display: 'flex', gap: 16, paddingBottom: i < notes.length - 1 ? 24 : 0, position: 'relative' }}>
+                  <div key={ev.id} style={{ display: 'flex', gap: 16, paddingBottom: i < notes.length - 1 ? 24 : 0, position: 'relative' }}>
                     {i < notes.length - 1 && (
                       <div style={{ position: 'absolute', right: 15, top: 28, bottom: 0, width: 1, background: 'var(--color-warm-border)' }} />
                     )}
@@ -476,8 +629,48 @@ export default function ChildProfile({
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{formatDate(ev.date)}</span>
                         <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, background: 'var(--color-teal-pale)', color: 'var(--color-teal)' }}>{ev.label}</span>
+                        <div style={{ marginInlineStart: 'auto', display: 'flex', gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => openEditOperationModal(ev.id)}
+                            disabled={busy}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 8,
+                              border: '1.5px solid var(--color-warm-border)',
+                              background: 'transparent',
+                              color: 'var(--color-text-soft)',
+                              fontSize: 12,
+                              cursor: busy ? 'default' : 'pointer',
+                              fontFamily: 'var(--font-body)',
+                              fontWeight: 600,
+                              opacity: busy ? 0.6 : 1,
+                            }}
+                          >
+                            تعديل
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openDeleteOperationModal(ev.id)}
+                            disabled={busy}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 8,
+                              border: '1.5px solid rgba(163,58,58,0.35)',
+                              background: 'transparent',
+                              color: 'var(--color-danger)',
+                              fontSize: 12,
+                              cursor: busy ? 'default' : 'pointer',
+                              fontFamily: 'var(--font-body)',
+                              fontWeight: 600,
+                              opacity: busy ? 0.6 : 1,
+                            }}
+                          >
+                            حذف
+                          </button>
+                        </div>
                       </div>
-                      <div style={{ fontSize: 14, color: 'var(--color-text)', lineHeight: 1.5 }}>{ev.text}</div>
+                      <div style={{ fontSize: 14, color: 'var(--color-text)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{ev.text}</div>
                     </div>
                   </div>
                 ))}
@@ -509,12 +702,12 @@ export default function ChildProfile({
         </button>
       </div>
 
-      <Modal open={operationModal} onClose={() => setOperationModal(false)} title="إضافة ملاحظة رعوية" width={500}>
+      <Modal open={operationModal} onClose={closeOperationModal} title={editingOperationId ? 'تعديل ملاحظة رعوية' : 'إضافة ملاحظة رعوية'} width={500}>
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-soft)', marginBottom: 6 }}>نوع الملاحظة</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {OPERATION_TYPE_LABELS.map((t) => (
-              <button key={t} onClick={() => setOperationType(t)}
+              <button key={t} type="button" onClick={() => handleOperationTypeChange(t)}
                 style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${operationType === t ? 'var(--color-teal)' : 'var(--color-warm-border)'}`, background: operationType === t ? 'var(--color-teal-pale)' : 'transparent', color: operationType === t ? 'var(--color-teal)' : 'var(--color-text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: operationType === t ? 600 : 400 }}>
                 {OPERATION_TYPE_ICONS[OPERATION_TYPE_TO_API[t] ?? 'custom']} {t}
               </button>
@@ -526,14 +719,68 @@ export default function ChildProfile({
           <input type="date" value={operationDate} onChange={(e) => setOperationDate(e.target.value)}
             style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10, fontSize: 13, background: 'var(--color-cream)', outline: 'none', boxSizing: 'border-box', color: 'var(--color-text)' }} />
         </div>
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-soft)', marginBottom: 6 }}>الملاحظة *</label>
-          <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="أضف ملاحظتك الرعوية هنا…" rows={4}
-            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10, fontSize: 13, color: 'var(--color-text)', background: 'var(--color-cream)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }} />
-        </div>
+        {operationType === 'تدريب' ? (
+          <div style={{ marginBottom: operationError ? 12 : 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-soft)', marginBottom: 8 }}>الصلوات</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {TRAINING_PRAYER_OPTIONS.map((option) => (
+                  <label key={option} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text)', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={trainingPrayers.includes(option)}
+                      onChange={() => toggleTrainingOption(option, trainingPrayers, setTrainingPrayers)}
+                      style={{ accentColor: 'var(--color-teal)', width: 15, height: 15 }}
+                    />
+                    {option}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-soft)', marginBottom: 8 }}>الكتاب المقدس</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {TRAINING_BIBLE_OPTIONS.map((option) => (
+                  <label key={option} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text)', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={trainingBible.includes(option)}
+                      onChange={() => toggleTrainingOption(option, trainingBible, setTrainingBible)}
+                      style={{ accentColor: 'var(--color-teal)', width: 15, height: 15 }}
+                    />
+                    {option}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-soft)', marginBottom: 6 }}>اخرى</label>
+              <textarea
+                value={trainingOther}
+                onChange={(e) => setTrainingOther(e.target.value)}
+                placeholder="أضف ملاحظات أخرى…"
+                rows={3}
+                style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10, fontSize: 13, color: 'var(--color-text)', background: 'var(--color-cream)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}
+              />
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginBottom: operationError ? 12 : 24 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text-soft)', marginBottom: 6 }}>الملاحظة *</label>
+            <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="أضف ملاحظتك الرعوية هنا…" rows={4}
+              style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--color-warm-border)', borderRadius: 10, fontSize: 13, color: 'var(--color-text)', background: 'var(--color-cream)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }} />
+          </div>
+        )}
+        {operationError && (
+          <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: 'rgba(163,58,58,0.08)', color: 'var(--color-danger)', fontSize: 13 }}>
+            {operationError}
+          </div>
+        )}
         <div className="modal-actions">
-          <button onClick={() => setOperationModal(false)} style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>إلغاء</button>
-          <button onClick={handleSaveOperation} disabled={!noteText.trim() || busy} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--color-teal)', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600, opacity: noteText.trim() && !busy ? 1 : 0.5 }}>حفظ الملاحظة</button>
+          <button onClick={closeOperationModal} disabled={busy} style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: busy ? 'default' : 'pointer', fontFamily: 'var(--font-body)' }}>إلغاء</button>
+          <button onClick={handleSaveOperation} disabled={!operationNoteValid || busy} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--color-teal)', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600, opacity: operationNoteValid && !busy ? 1 : 0.5 }}>
+            {busy ? '…جاري الحفظ' : editingOperationId ? 'حفظ التعديلات' : 'حفظ الملاحظة'}
+          </button>
         </div>
       </Modal>
 
@@ -652,6 +899,40 @@ export default function ChildProfile({
             style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--color-danger)', color: '#fff', fontSize: 13, cursor: deleting ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600, opacity: deleting ? 0.7 : 1 }}
           >
             {deleting ? '…جاري الحذف' : 'تأكيد الحذف'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={deleteOperationModal} onClose={closeDeleteOperationModal} title="حذف الملاحظة" width={440}>
+        <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--color-text)', lineHeight: 1.6 }}>
+          هل أنت متأكد من حذف هذه الملاحظة؟
+          {operationPendingDelete?.note ? (
+            <>
+              {' '}
+              <strong>«{operationPendingDelete.note}»</strong>
+            </>
+          ) : null}
+          {' '}لا يمكن التراجع عن هذا الإجراء.
+        </p>
+        {deleteOperationError && (
+          <div style={{ marginBottom: 14, fontSize: 13, color: 'var(--color-danger)' }}>{deleteOperationError}</div>
+        )}
+        <div className="modal-actions">
+          <button
+            type="button"
+            onClick={closeDeleteOperationModal}
+            disabled={deletingOperation}
+            style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid var(--color-warm-border)', background: 'transparent', color: 'var(--color-text-soft)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+          >
+            إلغاء
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmDeleteOperation}
+            disabled={deletingOperation}
+            style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'var(--color-danger)', color: '#fff', fontSize: 13, cursor: deletingOperation ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontWeight: 600, opacity: deletingOperation ? 0.7 : 1 }}
+          >
+            {deletingOperation ? '…جاري الحذف' : 'تأكيد الحذف'}
           </button>
         </div>
       </Modal>

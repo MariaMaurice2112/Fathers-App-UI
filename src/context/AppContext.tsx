@@ -26,6 +26,7 @@ import {
   addOperation,
   createChild,
   deleteChild,
+  deleteOperation,
   fetchChild,
   fetchChildren,
   fetchDashboard,
@@ -37,6 +38,7 @@ import {
   restoreSession,
   snoozeConfessionReminder,
   updateChild,
+  updateOperation,
 } from '@/lib/api';
 import { mapApiStage } from '@/lib/api/children';
 
@@ -67,6 +69,14 @@ interface AppContextValue {
     operationDate: string,
     note?: string
   ) => Promise<void>;
+  editOperation: (
+    childId: string,
+    operationId: string,
+    type: string,
+    operationDate: string,
+    note?: string
+  ) => Promise<void>;
+  removeOperation: (childId: string, operationId: string) => Promise<void>;
   markConfessionNoted: (childId: string) => Promise<void>;
   snoozeConfession: (childId: string, until: string) => Promise<void>;
   takeConfessionAction: (
@@ -302,6 +312,46 @@ export function AppProvider({ children: reactChildren }: { children: ReactNode }
     }
   }, [loadChild, refreshDashboard, handleError]);
 
+  const editOperation = useCallback(async (
+    childId: string,
+    operationId: string,
+    type: string,
+    operationDate: string,
+    note?: string
+  ) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await updateOperation(childId, operationId, {
+        type,
+        operationDate,
+        note: note ?? '',
+      });
+      await loadChild(childId);
+      await refreshDashboard();
+    } catch (err) {
+      handleError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadChild, refreshDashboard, handleError]);
+
+  const removeOperation = useCallback(async (childId: string, operationId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await deleteOperation(childId, operationId);
+      await loadChild(childId);
+      await refreshDashboard();
+    } catch (err) {
+      handleError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadChild, refreshDashboard, handleError]);
+
   const markConfessionNoted = useCallback(async (childId: string) => {
     setError(null);
     try {
@@ -400,6 +450,8 @@ export function AppProvider({ children: reactChildren }: { children: ReactNode }
         removeChild,
         recordConfession,
         recordOperation,
+        editOperation,
+        removeOperation,
         markConfessionNoted,
         snoozeConfession,
         takeConfessionAction,
