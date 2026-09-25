@@ -174,9 +174,15 @@ input[type='date']::-webkit-calendar-picker-indicator {
 
 .three-col-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 28px;
+}
+
+@media (max-width: 1024px) {
+  .three-col-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
@@ -515,4 +521,318 @@ input[type='date']::-webkit-calendar-picker-indicator {
 
 .global-loading-spinner {
   animation: global-loading-spin 0.75s linear infinite;
+}
+
+/* Training modal — friendly pickers */
+.training-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.training-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.training-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-warm-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.3;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.training-chip:hover {
+  border-color: var(--color-teal);
+  color: var(--color-teal);
+}
+
+.training-chip.is-selected {
+  background: var(--color-teal-pale);
+  border-color: var(--color-teal);
+  color: var(--color-teal);
+  font-weight: 700;
+}
+
+.training-selected-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.training-selected-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--color-teal-pale);
+  color: var(--color-teal);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  border: none;
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.training-selected-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.training-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.training-tab {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--color-warm-border);
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  font-size: 13px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.training-tab.is-active {
+  background: var(--color-teal-pale);
+  border-color: var(--color-teal);
+  color: var(--color-teal);
+}
+
+.training-tab-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(26, 95, 95, 0.12);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.training-tab.is-active .training-tab-count {
+  background: var(--color-teal);
+  color: #fff;
+}
+
+.training-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--color-warm-border);
+  border-radius: 12px;
+  font-size: 16px;
+  color: var(--color-text);
+  background: var(--color-cream);
+  outline: none;
+  font-family: var(--font-body);
+}
+
+.training-search:focus {
+  border-color: var(--color-teal);
+}
+
+.training-book-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+  max-height: min(42vh, 280px);
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--color-warm-border);
+  background: var(--color-cream);
+  -webkit-overflow-scrolling: touch;
+}
+
+.training-book-chip {
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1.5px solid var(--color-warm-border);
+  background: var(--color-card);
+  color: var(--color-text);
+  font-size: 12px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.35;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.training-book-chip.is-selected {
+  background: var(--color-teal-pale);
+  border-color: var(--color-teal);
+  color: var(--color-teal);
+  font-weight: 700;
+}
+
+.training-book-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.training-picker-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.training-link-btn {
+  border: none;
+  background: none;
+  padding: 6px 0;
+  color: var(--color-teal);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+.training-picker-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 640px) {
+  .training-modal-body {
+    gap: 12px;
+  }
+
+  .training-chip-row {
+    gap: 6px;
+  }
+
+  .training-chip {
+    min-height: 34px;
+    padding: 6px 11px;
+    font-size: 12px;
+  }
+
+  .training-selected-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-bottom: 8px;
+    padding-bottom: 2px;
+    gap: 5px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .training-selected-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .training-selected-pill {
+    flex-shrink: 0;
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .training-selected-pill span {
+    max-width: 100px;
+  }
+
+  .training-tabs {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .training-tab {
+    min-height: 36px;
+    padding: 6px 8px;
+    font-size: 12px;
+    gap: 6px;
+    border-radius: 10px;
+  }
+
+  .training-tab-count {
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+    padding: 0 5px;
+  }
+
+  .training-search {
+    margin-bottom: 8px;
+    padding: 9px 12px;
+    border-radius: 10px;
+  }
+
+  .training-book-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: min(32vh, 200px);
+    gap: 5px;
+    padding: 6px;
+    border-radius: 10px;
+  }
+
+  .training-book-chip {
+    min-height: 34px;
+    padding: 5px 6px;
+    border-radius: 8px;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .training-book-empty {
+    padding: 16px 10px;
+    font-size: 12px;
+  }
+
+  .training-picker-actions {
+    margin-top: 4px;
+  }
+
+  .training-picker-hint {
+    display: none;
+  }
+
+  .training-link-btn {
+    padding: 4px 0;
+    font-size: 11px;
+  }
 }

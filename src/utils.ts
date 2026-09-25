@@ -9,7 +9,7 @@ const AVATAR_COLORS = [
 ];
 
 export const OPERATION_TYPE_LABELS: OperationTypeLabel[] = [
-  'مخصص', 'زيارة', 'مكالمة', 'تدريب',
+  'مخصص', 'زيارة', 'مكالمة',
 ];
 
 export const OPERATION_TYPE_ICONS: Record<string, string> = {
@@ -39,6 +39,90 @@ export const TRAINING_PRAYER_OPTIONS = [
   'باكر / نوم',
 ] as const;
 
+/** Coptic Orthodox Old Testament books (including deuterocanonical). */
+export const TRAINING_OLD_TESTAMENT_BOOKS = [
+  'تكوين',
+  'خروج',
+  'لاويين',
+  'عدد',
+  'تثنية',
+  'يشوع',
+  'القضاة',
+  'راعوث',
+  'صموئيل أول',
+  'صموئيل ثان',
+  'ملوك أول',
+  'ملوك ثان',
+  'أخبار أيام أول',
+  'أخبار أيام ثان',
+  'عزرا',
+  'نحميا',
+  'أستير',
+  'أيوب',
+  'المزامير',
+  'الأمثال',
+  'الجامعة',
+  'نشيد الأناشيد',
+  'إشعياء',
+  'إرميا',
+  'مراثي إرميا',
+  'حزقيال',
+  'دانيال',
+  'هوشع',
+  'يوئيل',
+  'عاموس',
+  'عوبديا',
+  'يونان',
+  'ميخا',
+  'ناحوم',
+  'حبقوق',
+  'صفنيا',
+  'حجي',
+  'زكريا',
+  'ملاخي',
+  'طوبيا',
+  'يهوديت',
+  'تتميم سفر أستير',
+  'الحكمة (حكمة سليمان)',
+  'يشوع بن سيراخ',
+  'باروخ',
+  'تتميم سفر دانيال (النشيد، سوسنة، بل والثعبان)',
+  'مكابيين أول',
+  'مكابيين ثان',
+] as const;
+
+/** New Testament books. */
+export const TRAINING_NEW_TESTAMENT_BOOKS = [
+  'متى',
+  'مرقس',
+  'لوقا',
+  'يوحنا',
+  'أعمال الرسل',
+  'رومية',
+  'كورنثوس أولى',
+  'كورنثوس ثانية',
+  'غلاطية',
+  'أفسس',
+  'فيلبي',
+  'كولوسي',
+  'تسالونيكي أولى',
+  'تسالونيكي ثانية',
+  'تيموثاوس أولى',
+  'تيموثاوس ثانية',
+  'تيتوس',
+  'فيلمون',
+  'العبرانيين',
+  'يعقوب',
+  'بطرس أولى',
+  'بطرس ثانية',
+  'يوحنا أولى',
+  'يوحنا ثانية',
+  'يوحنا ثالثة',
+  'يهوذا',
+  'رؤيا',
+] as const;
+
+/** @deprecated Kept for parsing older training notes. */
 export const TRAINING_BIBLE_OPTIONS = [
   'اصحاح عهد جديد',
   'اصحاح عهد قديم',
@@ -49,6 +133,11 @@ export const TRAINING_SECTION_HEADERS = {
   prayers: 'الصلوات:',
   bible: 'الكتاب المقدس:',
   other: 'اخرى:',
+} as const;
+
+export const TRAINING_TESTAMENT_HEADERS = {
+  old: 'العهد القديم :',
+  new: 'العهد الجديد :',
 } as const;
 
 function extractKnownOptions(text: string, options: readonly string[]): {
@@ -95,17 +184,48 @@ function extractKnownOptions(text: string, options: readonly string[]): {
   return { matched, leftover: remaining };
 }
 
+function parseTestamentBooksLine(line: string, header: string, knownBooks: readonly string[]): string[] {
+  let rest = line.trim();
+  if (rest.startsWith(header)) {
+    rest = rest.slice(header.length).trim();
+  } else if (rest.startsWith('العهد القديم') || rest.startsWith('العهد الجديد')) {
+    rest = rest.replace(/^العهد (?:القديم|الجديد)\s*:?\s*/, '').trim();
+  }
+  if (!rest) return [];
+
+  const aliases: Record<string, string> = { متي: 'متى' };
+  const parts = rest
+    .split(/\s*-\s*/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => aliases[p] ?? p);
+
+  const known = new Set<string>(knownBooks);
+  const matched: string[] = [];
+  for (const book of knownBooks) {
+    if (parts.includes(book) && !matched.includes(book)) matched.push(book);
+  }
+  for (const part of parts) {
+    if (!known.has(part) && !matched.includes(part)) matched.push(part);
+  }
+  return matched;
+}
+
 export function composeTrainingNote(
   prayers: string[],
-  bible: string[],
+  oldTestament: string[],
+  newTestament: string[],
   other: string
 ): string {
   const parts: string[] = [];
   if (prayers.length > 0) {
     parts.push(`${TRAINING_SECTION_HEADERS.prayers} ${prayers.join(' ')}`);
   }
-  if (bible.length > 0) {
-    parts.push(`${TRAINING_SECTION_HEADERS.bible} ${bible.join(' ')}`);
+  if (oldTestament.length > 0) {
+    parts.push(`${TRAINING_TESTAMENT_HEADERS.old} ${oldTestament.join(' - ')}`);
+  }
+  if (newTestament.length > 0) {
+    parts.push(`${TRAINING_TESTAMENT_HEADERS.new} ${newTestament.join(' - ')}`);
   }
   const otherTrimmed = other.trim();
   if (otherTrimmed) {
@@ -116,13 +236,15 @@ export function composeTrainingNote(
 
 export function parseTrainingNote(note: string): {
   prayers: string[];
-  bible: string[];
+  oldTestament: string[];
+  newTestament: string[];
   other: string;
 } {
   const prayerSet = new Set<string>(TRAINING_PRAYER_OPTIONS);
-  const bibleSet = new Set<string>(TRAINING_BIBLE_OPTIONS);
+  const legacyBibleSet = new Set<string>(TRAINING_BIBLE_OPTIONS);
   const prayers: string[] = [];
-  const bible: string[] = [];
+  const oldTestament: string[] = [];
+  const newTestament: string[] = [];
   const otherLines: string[] = [];
 
   const lines = note.split(/\r?\n/);
@@ -139,6 +261,10 @@ export function parseTrainingNote(note: string): {
     line.startsWith('(الكتاب المقدس):');
   const isOtherHeader = (line: string) =>
     line === TRAINING_SECTION_HEADERS.other || line === 'اخرى' || line.startsWith('اخرى:');
+  const isOldTestamentHeader = (line: string) =>
+    line.startsWith('العهد القديم') || line.startsWith(TRAINING_TESTAMENT_HEADERS.old);
+  const isNewTestamentHeader = (line: string) =>
+    line.startsWith('العهد الجديد') || line.startsWith(TRAINING_TESTAMENT_HEADERS.new);
 
   const contentAfterHeader = (line: string, headers: string[]) => {
     for (const header of headers) {
@@ -150,6 +276,12 @@ export function parseTrainingNote(note: string): {
     return '';
   };
 
+  const pushUnique = (list: string[], items: string[]) => {
+    for (const item of items) {
+      if (!list.includes(item)) list.push(item);
+    }
+  };
+
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) continue;
@@ -159,9 +291,7 @@ export function parseTrainingNote(note: string): {
       const rest = contentAfterHeader(line, ['الصلوات:', 'الصلوات']);
       if (rest) {
         const { matched, leftover } = extractKnownOptions(rest, TRAINING_PRAYER_OPTIONS);
-        for (const item of matched) {
-          if (!prayers.includes(item)) prayers.push(item);
-        }
+        pushUnique(prayers, matched);
         if (leftover) otherLines.push(leftover);
       }
       continue;
@@ -170,12 +300,25 @@ export function parseTrainingNote(note: string): {
       section = 'bible';
       const rest = contentAfterHeader(line, ['الكتاب المقدس:', '(الكتاب المقدس):', 'الكتاب المقدس', '(الكتاب المقدس)']);
       if (rest) {
-        const { matched, leftover } = extractKnownOptions(rest, TRAINING_BIBLE_OPTIONS);
-        for (const item of matched) {
-          if (!bible.includes(item)) bible.push(item);
+        if (isOldTestamentHeader(rest)) {
+          pushUnique(oldTestament, parseTestamentBooksLine(rest, TRAINING_TESTAMENT_HEADERS.old, TRAINING_OLD_TESTAMENT_BOOKS));
+        } else if (isNewTestamentHeader(rest)) {
+          pushUnique(newTestament, parseTestamentBooksLine(rest, TRAINING_TESTAMENT_HEADERS.new, TRAINING_NEW_TESTAMENT_BOOKS));
+        } else {
+          const { matched, leftover } = extractKnownOptions(rest, TRAINING_BIBLE_OPTIONS);
+          if (matched.length || leftover) otherLines.push(rest);
         }
-        if (leftover) otherLines.push(leftover);
       }
+      continue;
+    }
+    if (isOldTestamentHeader(line)) {
+      section = 'bible';
+      pushUnique(oldTestament, parseTestamentBooksLine(line, TRAINING_TESTAMENT_HEADERS.old, TRAINING_OLD_TESTAMENT_BOOKS));
+      continue;
+    }
+    if (isNewTestamentHeader(line)) {
+      section = 'bible';
+      pushUnique(newTestament, parseTestamentBooksLine(line, TRAINING_TESTAMENT_HEADERS.new, TRAINING_NEW_TESTAMENT_BOOKS));
       continue;
     }
     if (isOtherHeader(line)) {
@@ -189,32 +332,22 @@ export function parseTrainingNote(note: string): {
       if (prayerSet.has(line) && !prayers.includes(line)) prayers.push(line);
       else {
         const { matched, leftover } = extractKnownOptions(line, TRAINING_PRAYER_OPTIONS);
-        for (const item of matched) {
-          if (!prayers.includes(item)) prayers.push(item);
-        }
+        pushUnique(prayers, matched);
         if (leftover) otherLines.push(leftover);
       }
     } else if (section === 'bible') {
-      if (bibleSet.has(line) && !bible.includes(line)) bible.push(line);
-      else {
-        const { matched, leftover } = extractKnownOptions(line, TRAINING_BIBLE_OPTIONS);
-        for (const item of matched) {
-          if (!bible.includes(item)) bible.push(item);
-        }
-        if (leftover) otherLines.push(leftover);
-      }
+      if (legacyBibleSet.has(line)) otherLines.push(line);
+      else otherLines.push(line);
     } else if (section === 'other') {
       otherLines.push(line);
     } else if (prayerSet.has(line) && !prayers.includes(line)) {
       prayers.push(line);
-    } else if (bibleSet.has(line) && !bible.includes(line)) {
-      bible.push(line);
     } else {
       otherLines.push(line);
     }
   }
 
-  return { prayers, bible, other: otherLines.join('\n') };
+  return { prayers, oldTestament, newTestament, other: otherLines.join('\n') };
 }
 
 export function getAvatarColor(id: string): string {
