@@ -91,6 +91,36 @@ export async function addOperation(
   return res.data;
 }
 
+export async function updateOperation(
+  childId: string,
+  operationId: string,
+  data: {
+    type?: string;
+    operationDate?: string;
+    note?: string;
+  }
+): Promise<ApiOperation> {
+  const body: Record<string, unknown> = {};
+  if (data.type !== undefined) body.type = data.type;
+  if (data.operationDate !== undefined) body.operation_date = data.operationDate;
+  if (data.note !== undefined) body.note = data.note;
+
+  const res = await invokeFunction<{ success: boolean; data: ApiOperation }>(
+    `children/${childId}/operations/${operationId}`,
+    {
+      method: 'PATCH',
+      body,
+    }
+  );
+  return res.data;
+}
+
+export async function deleteOperation(childId: string, operationId: string): Promise<void> {
+  await invokeFunction(`children/${childId}/operations/${operationId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function fetchStages(): Promise<ApiStage[]> {
   const res = await invokeFunction<{ data: ApiStage[] }>('stages');
   return res.data ?? [];
