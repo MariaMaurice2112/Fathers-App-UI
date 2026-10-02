@@ -33,6 +33,7 @@ import {
   fetchStages,
   loginWithCredentials,
   logoutUser,
+  markBirthdayAcknowledged,
   markConfessionReminderRead,
   markEventRead,
   restoreSession,
@@ -387,11 +388,17 @@ export function AppProvider({ children: reactChildren }: { children: ReactNode }
   }, [recordOperation, refreshDashboard]);
 
   const markBirthdayNoted = useCallback(async (childId: string) => {
-    await recordOperation(childId, 'birthday', new Date().toISOString().slice(0, 10), 'تم الاطلاع');
-    setBirthdayAlerts((prev) =>
-      prev.map((a) => (a.childId === childId ? { ...a, status: 'noted' as const } : a))
-    );
-  }, [recordOperation]);
+    setError(null);
+    try {
+      await markBirthdayAcknowledged(childId);
+      setBirthdayAlerts((prev) => prev.filter((a) => a.childId !== childId));
+      await recordOperation(childId, 'birthday', new Date().toISOString().slice(0, 10), 'تم الاطلاع');
+      await refreshDashboard();
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  }, [recordOperation, refreshDashboard, handleError]);
 
   const takeBirthdayAction = useCallback(async (
     childId: string,
@@ -401,15 +408,17 @@ export function AppProvider({ children: reactChildren }: { children: ReactNode }
   ) => {
     const apiType = ACTION_TYPE_TO_API[actionType] ?? 'birthday';
     const note = actionNote ? `${actionType}: ${actionNote}` : actionType;
-    await recordOperation(childId, apiType === 'birthday' ? 'birthday' : apiType, actionDate, note);
-    setBirthdayAlerts((prev) =>
-      prev.map((a) =>
-        a.childId === childId
-          ? { ...a, status: 'action_taken' as const, actionDate, actionNote, actionType: actionType as ActionType }
-          : a
-      )
-    );
-  }, [recordOperation]);
+    setError(null);
+    try {
+      await markBirthdayAcknowledged(childId);
+      setBirthdayAlerts((prev) => prev.filter((a) => a.childId !== childId));
+      await recordOperation(childId, apiType === 'birthday' ? 'birthday' : apiType, actionDate, note);
+      await refreshDashboard();
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  }, [recordOperation, refreshDashboard, handleError]);
 
   const markEventAsRead = useCallback(async (eventId: string) => {
     setError(null);
