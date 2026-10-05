@@ -61,6 +61,15 @@ function mapConfession(record: ApiConfessionRecord): ConfessionRecord {
   };
 }
 
+const STAGE_LABELS: Record<string, string> = {
+  'Not Educated': 'غير متعلم',
+};
+
+/** Arabic label for a stage name stored in English. */
+export function stageLabel(name: string): string {
+  return STAGE_LABELS[name] ?? name;
+}
+
 function resolveChildId(api: Pick<ApiChild, 'id' | 'child_id'>): string {
   return api.id ?? api.child_id ?? '';
 }
@@ -74,7 +83,7 @@ export function mapApiChild(api: ApiChild | ApiChildDetail): Child {
     birthday: api.birthday ?? undefined,
     marriageContract: api.marriage_contract ?? undefined,
     stageId: api.stage_id,
-    stage: api.stage,
+    stage: stageLabel(api.stage),
     latestConfessionAt: api.latest_confession_at ?? undefined,
     daysSinceLastConfession: api.days_since_last_confession ?? undefined,
     needsConfession: api.needs_confession,
@@ -87,7 +96,7 @@ export function mapApiChild(api: ApiChild | ApiChildDetail): Child {
 }
 
 export function mapApiStage(stage: ApiStage): Stage {
-  return { id: stage.id, name: stage.name };
+  return { id: stage.id, name: stageLabel(stage.name) };
 }
 
 export function mapDashboardStats(data: ApiDashboardResponse): DashboardStats {
