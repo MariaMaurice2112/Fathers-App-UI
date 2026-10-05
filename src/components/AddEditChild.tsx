@@ -22,9 +22,11 @@ type FormFields = {
   phoneNumber2: string;
   maritalStatus: MaritalStatus;
   marriageDate: string;
+  specialCase: boolean;
 };
 
-type FormErrors = Partial<Record<keyof FormFields | 'form', string>>;
+type TextField = Exclude<keyof FormFields, 'specialCase'>;
+type FormErrors = Partial<Record<TextField | 'form', string>>;
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
@@ -40,7 +42,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 const CHILD_ALREADY_EXISTS_AR = 'يوجد ابن بهذا الاسم بالفعل';
 
 /** Map known English API messages to Arabic UI copy. */
-function localizeChildError(message: string): { field?: keyof FormFields; message: string } {
+function localizeChildError(message: string): { field?: TextField; message: string } {
   const lower = message.toLowerCase();
 
   if (lower.includes('already exists') || lower.includes('child already exist')) {
@@ -96,10 +98,11 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
     phoneNumber2: child?.phoneNumber2 ?? '',
     maritalStatus: child?.maritalStatus ?? 'single',
     marriageDate: child?.marriageDate ?? '',
+    specialCase: child?.specialCase ?? false,
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const set = (key: keyof FormFields, val: string) => {
+  const set = (key: TextField, val: string) => {
     setForm((f) => {
       if (key === 'maritalStatus') {
         const status = val as MaritalStatus;
@@ -160,6 +163,7 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
         phoneNumber2: normalizedPhone2,
         maritalStatus: form.maritalStatus,
         marriageDate: form.maritalStatus === 'married' ? (form.marriageDate || undefined) : undefined,
+        specialCase: form.specialCase,
         ...(child ? { id: child.id } : {}),
       });
     } catch (err) {
@@ -174,7 +178,7 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
     }
   };
 
-  const inputProps = (key: keyof FormFields) => ({
+  const inputProps = (key: TextField) => ({
     value: form[key],
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => set(key, e.target.value),
     style: { ...inputStyle, borderColor: errors[key] ? 'var(--color-danger)' : 'var(--color-warm-border)' },
@@ -292,6 +296,21 @@ export default function AddEditChild({ child, stages, saving = false, onSave, on
               />
               {errors.phoneNumber2 && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-danger)' }}>{errors.phoneNumber2}</p>}
             </Field>
+            <div className="form-grid-full">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--color-text-soft)', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={form.specialCase}
+                  disabled={saving}
+                  onChange={(e) => {
+                    setForm((current) => ({ ...current, specialCase: e.target.checked }));
+                    setErrors((current) => ({ ...current, form: undefined }));
+                  }}
+                  style={{ accentColor: 'var(--color-teal)', width: 15, height: 15 }}
+                />
+                حاله خاصه
+              </label>
+            </div>
           </div>
         </div>
 

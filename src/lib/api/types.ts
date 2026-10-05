@@ -16,6 +16,7 @@ export interface ApiChild {
   phone_number_2?: string | null;
   marital_status?: MaritalStatus | null;
   marriage_date?: string | null;
+  special_case?: boolean | null;
   age?: number | null;
   stage_id: number;
   stage: string;
