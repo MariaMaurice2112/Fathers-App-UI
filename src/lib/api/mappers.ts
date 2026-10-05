@@ -31,6 +31,7 @@ export const OPERATION_TYPE_TO_API: Record<string, string> = {
   'عيد ميلاد': 'birthday',
   تذكير: 'reminder',
   مخصص: 'custom',
+  تدريب: 'training',
 };
 
 export const OPERATION_TYPE_FROM_API: Record<string, string> = Object.fromEntries(
@@ -82,6 +83,11 @@ export function mapApiChild(api: ApiChild | ApiChildDetail): Child {
     name: api.name,
     birthday: api.birthday ?? undefined,
     marriageContract: api.marriage_contract ?? undefined,
+    phoneNumber: api.phone_number ?? undefined,
+    phoneNumber2: api.phone_number_2 ?? undefined,
+    maritalStatus: api.marital_status === 'married' ? 'married' : 'single',
+    marriageDate: api.marriage_date ?? undefined,
+    specialCase: api.special_case === true,
     stageId: api.stage_id,
     stage: stageLabel(api.stage),
     latestConfessionAt: api.latest_confession_at ?? undefined,
@@ -161,22 +167,42 @@ export function mapAppEvents(events: ApiEvent[]): AppEvent[] {
     title: event.title,
     message: event.message ?? undefined,
     eventDate: event.event_date ?? event.notification_date ?? '',
+    eventTime: normalizeEventTime(event.event_time),
     childId: event.child_id ?? undefined,
     childName: event.child_name ?? undefined,
     isRead: event.is_read,
   }));
 }
 
+/** Normalize Postgres `time` (HH:MM:SS) to HTML time input value (HH:MM). */
+function normalizeEventTime(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.slice(0, 5);
+}
+
 export function childToCreatePayload(data: {
   name: string;
   birthday?: string;
   marriageContract?: string;
+  phoneNumber?: string;
+  phoneNumber2?: string;
+  maritalStatus: 'single' | 'married';
+  marriageDate?: string;
+  specialCase?: boolean;
   stageId: number;
 }) {
+  const isMarried = data.maritalStatus === 'married';
   return {
     name: data.name,
     birthday: data.birthday || undefined,
     marriage_contract: data.marriageContract || null,
+    phone_number: data.phoneNumber?.trim() || null,
+    phone_number_2: data.phoneNumber2?.trim() || null,
+    marital_status: data.maritalStatus,
+    marriage_date: isMarried ? (data.marriageDate || null) : null,
+    special_case: data.specialCase === true,
     stage_id: data.stageId,
   };
 }
@@ -185,12 +211,27 @@ export function childToUpdatePayload(data: {
   name?: string;
   birthday?: string;
   marriageContract?: string;
+  phoneNumber?: string;
+  phoneNumber2?: string;
+  maritalStatus?: 'single' | 'married';
+  marriageDate?: string;
+  specialCase?: boolean;
   stageId?: number;
 }) {
   const payload: Record<string, unknown> = {};
   if (data.name !== undefined) payload.name = data.name;
   if (data.birthday !== undefined) payload.birthday = data.birthday || null;
   if (data.marriageContract !== undefined) payload.marriage_contract = data.marriageContract || null;
+  if (data.phoneNumber !== undefined) payload.phone_number = data.phoneNumber?.trim() || null;
+  if (data.phoneNumber2 !== undefined) payload.phone_number_2 = data.phoneNumber2?.trim() || null;
+  if (data.maritalStatus !== undefined) {
+    payload.marital_status = data.maritalStatus;
+    payload.marriage_date =
+      data.maritalStatus === 'married' ? (data.marriageDate || null) : null;
+  } else if (data.marriageDate !== undefined) {
+    payload.marriage_date = data.marriageDate || null;
+  }
+  if (data.specialCase !== undefined) payload.special_case = data.specialCase === true;
   if (data.stageId !== undefined) payload.stage_id = data.stageId;
   return payload;
 }

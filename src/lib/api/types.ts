@@ -1,4 +1,5 @@
 export type ConfessionStatus = 'NO_CONFESSION_RECORDED' | 'OVERDUE' | 'UP_TO_DATE';
+export type MaritalStatus = 'single' | 'married';
 
 export interface ApiStage {
   id: number;
@@ -11,6 +12,11 @@ export interface ApiChild {
   name: string;
   birthday?: string | null;
   marriage_contract?: string | null;
+  phone_number?: string | null;
+  phone_number_2?: string | null;
+  marital_status?: MaritalStatus | null;
+  marriage_date?: string | null;
+  special_case?: boolean | null;
   age?: number | null;
   stage_id: number;
   stage: string;
@@ -63,6 +69,8 @@ export interface ApiEvent {
   message?: string | null;
   event_date?: string;
   notification_date?: string;
+  /** Optional HH:MM or HH:MM:SS; null when unset. */
+  event_time?: string | null;
   status?: string;
   is_read: boolean;
   created_at?: string;
@@ -91,6 +99,11 @@ export interface LoginResponse {
     email: string;
     father_name?: string | null;
   };
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+  message: string;
 }
 
 export interface ApiErrorBody {

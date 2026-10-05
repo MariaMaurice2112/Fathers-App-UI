@@ -26,17 +26,20 @@ import {
   addOperation,
   createChild,
   deleteChild,
+  deleteOperation,
   fetchChild,
   fetchChildren,
   fetchDashboard,
   fetchStages,
   loginWithCredentials,
   logoutUser,
+  markBirthdayAcknowledged,
   markConfessionReminderRead,
   markEventRead,
   restoreSession,
   snoozeConfessionReminder,
   updateChild,
+  updateOperation,
 } from '@/lib/api';
 import { mapApiStage } from '@/lib/api/children';
 
@@ -67,6 +70,14 @@ interface AppContextValue {
     operationDate: string,
     note?: string
   ) => Promise<void>;
+  editOperation: (
+    childId: string,
+    operationId: string,
+    type: string,
+    operationDate: string,
+    note?: string
+  ) => Promise<void>;
+  removeOperation: (childId: string, operationId: string) => Promise<void>;
   markConfessionNoted: (childId: string) => Promise<void>;
   snoozeConfession: (childId: string, until: string) => Promise<void>;
   takeConfessionAction: (
@@ -221,6 +232,11 @@ export function AppProvider({ children: reactChildren }: { children: ReactNode }
         name: data.name,
         birthday: data.birthday || undefined,
         marriageContract: data.marriageContract || undefined,
+        phoneNumber: data.phoneNumber || undefined,
+        phoneNumber2: data.phoneNumber2 || undefined,
+        maritalStatus: data.maritalStatus,
+        marriageDate: data.marriageDate || undefined,
+        specialCase: data.specialCase === true,
         stageId: data.stageId,
       };
 
@@ -298,6 +314,46 @@ export function AppProvider({ children: reactChildren }: { children: ReactNode }
     }
   }, [loadChild, refreshDashboard, handleError]);
 
+  const editOperation = useCallback(async (
+    childId: string,
+    operationId: string,
+    type: string,
+    operationDate: string,
+    note?: string
+  ) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await updateOperation(childId, operationId, {
+        type,
+        operationDate,
+        note: note ?? '',
+      });
+      await loadChild(childId);
+      await refreshDashboard();
+    } catch (err) {
+      handleError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadChild, refreshDashboard, handleError]);
+
+  const removeOperation = useCallback(async (childId: string, operationId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await deleteOperation(childId, operationId);
+      await loadChild(childId);
+      await refreshDashboard();
+    } catch (err) {
+      handleError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadChild, refreshDashboard, handleError]);
+
   const markConfessionNoted = useCallback(async (childId: string) => {
     setError(null);
     try {
@@ -333,11 +389,17 @@ export function AppProvider({ children: reactChildren }: { children: ReactNode }
   }, [recordOperation, refreshDashboard]);
 
   const markBirthdayNoted = useCallback(async (childId: string) => {
-    await recordOperation(childId, 'birthday', new Date().toISOString().slice(0, 10), 'تم الاطلاع');
-    setBirthdayAlerts((prev) =>
-      prev.map((a) => (a.childId === childId ? { ...a, status: 'noted' as const } : a))
-    );
-  }, [recordOperation]);
+    setError(null);
+    try {
+      await markBirthdayAcknowledged(childId);
+      setBirthdayAlerts((prev) => prev.filter((a) => a.childId !== childId));
+      await recordOperation(childId, 'birthday', new Date().toISOString().slice(0, 10), 'تم الاطلاع');
+      await refreshDashboard();
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  }, [recordOperation, refreshDashboard, handleError]);
 
   const takeBirthdayAction = useCallback(async (
     childId: string,
@@ -347,15 +409,17 @@ export function AppProvider({ children: reactChildren }: { children: ReactNode }
   ) => {
     const apiType = ACTION_TYPE_TO_API[actionType] ?? 'birthday';
     const note = actionNote ? `${actionType}: ${actionNote}` : actionType;
-    await recordOperation(childId, apiType === 'birthday' ? 'birthday' : apiType, actionDate, note);
-    setBirthdayAlerts((prev) =>
-      prev.map((a) =>
-        a.childId === childId
-          ? { ...a, status: 'action_taken' as const, actionDate, actionNote, actionType: actionType as ActionType }
-          : a
-      )
-    );
-  }, [recordOperation]);
+    setError(null);
+    try {
+      await markBirthdayAcknowledged(childId);
+      setBirthdayAlerts((prev) => prev.filter((a) => a.childId !== childId));
+      await recordOperation(childId, apiType === 'birthday' ? 'birthday' : apiType, actionDate, note);
+      await refreshDashboard();
+    } catch (err) {
+      handleError(err);
+      throw err;
+    }
+  }, [recordOperation, refreshDashboard, handleError]);
 
   const markEventAsRead = useCallback(async (eventId: string) => {
     setError(null);
@@ -396,6 +460,8 @@ export function AppProvider({ children: reactChildren }: { children: ReactNode }
         removeChild,
         recordConfession,
         recordOperation,
+        editOperation,
+        removeOperation,
         markConfessionNoted,
         snoozeConfession,
         takeConfessionAction,

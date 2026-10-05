@@ -1,7 +1,7 @@
 import { invokeFunction } from './invoke';
-import { mapApiChild, mapApiStage, childToCreatePayload, childToUpdatePayload } from './mappers';
-import type { ApiChild, ApiChildDetail, ApiConfessionRecord, ApiOperation, ApiStage } from './types';
-import type { Child } from '@/types';
+import { mapApiChild, mapApiStage, mapAppEvents, childToCreatePayload, childToUpdatePayload } from './mappers';
+import type { ApiChild, ApiChildDetail, ApiConfessionRecord, ApiEvent, ApiOperation, ApiStage } from './types';
+import type { AppEvent, Child } from '@/types';
 
 export async function fetchChildren(): Promise<Child[]> {
   const res = await invokeFunction<{ data: ApiChild[] }>('children');
@@ -13,10 +13,20 @@ export async function fetchChild(id: string): Promise<Child> {
   return mapApiChild(res.data);
 }
 
+export async function fetchChildEvents(childId: string): Promise<AppEvent[]> {
+  const res = await invokeFunction<{ data: ApiEvent[] }>(`children/${childId}/events`);
+  return mapAppEvents(res.data ?? []);
+}
+
 export async function createChild(data: {
   name: string;
   birthday?: string;
   marriageContract?: string;
+  phoneNumber?: string;
+  phoneNumber2?: string;
+  maritalStatus: 'single' | 'married';
+  marriageDate?: string;
+  specialCase?: boolean;
   stageId: number;
 }): Promise<Child> {
   const res = await invokeFunction<{ success: boolean; data: ApiChild }>('children', {
@@ -28,7 +38,17 @@ export async function createChild(data: {
 
 export async function updateChild(
   id: string,
-  data: { name?: string; birthday?: string; marriageContract?: string; stageId?: number }
+  data: {
+    name?: string;
+    birthday?: string;
+    marriageContract?: string;
+    phoneNumber?: string;
+    phoneNumber2?: string;
+    maritalStatus?: 'single' | 'married';
+    marriageDate?: string;
+    specialCase?: boolean;
+    stageId?: number;
+  }
 ): Promise<Child> {
   const res = await invokeFunction<{ success: boolean; data: ApiChild }>(`children/${id}`, {
     method: 'PATCH',
@@ -71,6 +91,36 @@ export async function addOperation(
     }
   );
   return res.data;
+}
+
+export async function updateOperation(
+  childId: string,
+  operationId: string,
+  data: {
+    type?: string;
+    operationDate?: string;
+    note?: string;
+  }
+): Promise<ApiOperation> {
+  const body: Record<string, unknown> = {};
+  if (data.type !== undefined) body.type = data.type;
+  if (data.operationDate !== undefined) body.operation_date = data.operationDate;
+  if (data.note !== undefined) body.note = data.note;
+
+  const res = await invokeFunction<{ success: boolean; data: ApiOperation }>(
+    `children/${childId}/operations/${operationId}`,
+    {
+      method: 'PATCH',
+      body,
+    }
+  );
+  return res.data;
+}
+
+export async function deleteOperation(childId: string, operationId: string): Promise<void> {
+  await invokeFunction(`children/${childId}/operations/${operationId}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function fetchStages(): Promise<ApiStage[]> {

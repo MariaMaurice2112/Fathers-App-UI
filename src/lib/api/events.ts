@@ -17,6 +17,7 @@ export async function createEvent(data: {
   title: string;
   eventDate: string;
   message?: string;
+  eventTime?: string | null;
   childId?: string;
 }): Promise<AppEvent> {
   const res = await invokeFunction<{ success: boolean; data: ApiEvent }>('events', {
@@ -25,6 +26,7 @@ export async function createEvent(data: {
       title: data.title,
       event_date: data.eventDate,
       message: data.message ?? '',
+      event_time: data.eventTime?.trim() ? data.eventTime.trim() : null,
       child_id: data.childId ?? null,
     },
   });

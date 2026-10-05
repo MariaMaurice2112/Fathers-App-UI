@@ -8,7 +8,7 @@ import { useApp } from '@/context/AppContext';
 export default function ChildProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { getChild, isLoading, loadChild, recordOperation, recordConfession } = useApp();
+  const { getChild, isLoading, loadChild, recordOperation, editOperation, removeOperation, recordConfession, removeChild } = useApp();
 
   const child = getChild(id);
 
@@ -34,7 +34,13 @@ export default function ChildProfilePage({ params }: { params: Promise<{ id: str
       saving={isLoading}
       onBack={() => router.push('/children')}
       onEdit={() => router.push(`/children/${id}/edit`)}
+      onDelete={async (childId) => {
+        await removeChild(childId);
+        router.push('/children');
+      }}
       onAddOperation={recordOperation}
+      onEditOperation={editOperation}
+      onDeleteOperation={removeOperation}
       onAddConfession={recordConfession}
     />
   );

@@ -2,6 +2,7 @@ export type ConfessionStatus = 'NO_CONFESSION_RECORDED' | 'OVERDUE' | 'UP_TO_DAT
 export type AlertStatus = 'pending' | 'noted' | 'action_taken';
 export type ActionType = 'اتصال' | 'زيارة' | 'رسالة' | 'متابعة أخرى';
 export type OperationTypeLabel = 'مخصص' | 'تذكير' | 'زيارة' | 'مكالمة';
+export type MaritalStatus = 'single' | 'married';
 
 export interface Operation {
   id: string;
@@ -26,6 +27,11 @@ export interface Child {
   name: string;
   birthday?: string;
   marriageContract?: string;
+  phoneNumber?: string;
+  phoneNumber2?: string;
+  maritalStatus: MaritalStatus;
+  marriageDate?: string;
+  specialCase: boolean;
   stageId: number;
   stage: string;
   latestConfessionAt?: string;
@@ -70,6 +76,8 @@ export interface AppEvent {
   title: string;
   message?: string;
   eventDate: string;
+  /** Optional HH:MM clock time; omit when unset. */
+  eventTime?: string;
   childId?: string;
   childName?: string;
   isRead: boolean;
@@ -86,5 +94,10 @@ export interface ChildFormData {
   name: string;
   birthday: string;
   marriageContract?: string;
+  phoneNumber?: string;
+  phoneNumber2?: string;
+  maritalStatus: MaritalStatus;
+  marriageDate?: string;
+  specialCase: boolean;
   stageId: number;
 }

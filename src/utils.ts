@@ -9,7 +9,7 @@ const AVATAR_COLORS = [
 ];
 
 export const OPERATION_TYPE_LABELS: OperationTypeLabel[] = [
-  'مخصص',  'زيارة', 'مكالمة',
+  'مخصص', 'زيارة', 'مكالمة',
 ];
 
 export const OPERATION_TYPE_ICONS: Record<string, string> = {
@@ -21,6 +21,7 @@ export const OPERATION_TYPE_ICONS: Record<string, string> = {
   birthday: '🎂',
   reminder: '🔔',
   custom: '📝',
+  training: '📖',
   مكالمة: '📞',
   زيارة: '🏠',
   رسالة: '💬',
@@ -29,7 +30,325 @@ export const OPERATION_TYPE_ICONS: Record<string, string> = {
   'عيد ميلاد': '🎂',
   تذكير: '🔔',
   مخصص: '📝',
+  تدريب: '📖',
 };
+
+export const TRAINING_PRAYER_OPTIONS = [
+  'باكر',
+  'باكر / غروب / نوم',
+  'باكر / نوم',
+] as const;
+
+/** Coptic Orthodox Old Testament books (including deuterocanonical). */
+export const TRAINING_OLD_TESTAMENT_BOOKS = [
+  'تكوين',
+  'خروج',
+  'لاويين',
+  'عدد',
+  'تثنية',
+  'يشوع',
+  'القضاة',
+  'راعوث',
+  'صموئيل أول',
+  'صموئيل ثان',
+  'ملوك أول',
+  'ملوك ثان',
+  'أخبار أيام أول',
+  'أخبار أيام ثان',
+  'عزرا',
+  'نحميا',
+  'أستير',
+  'أيوب',
+  'المزامير',
+  'الأمثال',
+  'الجامعة',
+  'نشيد الأناشيد',
+  'إشعياء',
+  'إرميا',
+  'مراثي إرميا',
+  'حزقيال',
+  'دانيال',
+  'هوشع',
+  'يوئيل',
+  'عاموس',
+  'عوبديا',
+  'يونان',
+  'ميخا',
+  'ناحوم',
+  'حبقوق',
+  'صفنيا',
+  'حجي',
+  'زكريا',
+  'ملاخي',
+  'طوبيا',
+  'يهوديت',
+  'تتميم سفر أستير',
+  'الحكمة (حكمة سليمان)',
+  'يشوع بن سيراخ',
+  'باروخ',
+  'تتميم سفر دانيال (النشيد، سوسنة، بل والثعبان)',
+  'مكابيين أول',
+  'مكابيين ثان',
+] as const;
+
+/** New Testament books. */
+export const TRAINING_NEW_TESTAMENT_BOOKS = [
+  'متى',
+  'مرقس',
+  'لوقا',
+  'يوحنا',
+  'أعمال الرسل',
+  'رومية',
+  'كورنثوس أولى',
+  'كورنثوس ثانية',
+  'غلاطية',
+  'أفسس',
+  'فيلبي',
+  'كولوسي',
+  'تسالونيكي أولى',
+  'تسالونيكي ثانية',
+  'تيموثاوس أولى',
+  'تيموثاوس ثانية',
+  'تيطس',
+  'فيلمون',
+  'العبرانيين',
+  'يعقوب',
+  'بطرس أولى',
+  'بطرس ثانية',
+  'يوحنا أولى',
+  'يوحنا ثانية',
+  'يوحنا ثالثة',
+  'يهوذا',
+  'رؤيا',
+] as const;
+
+/** @deprecated Kept for parsing older training notes. */
+export const TRAINING_BIBLE_OPTIONS = [
+  'اصحاح عهد جديد',
+  'اصحاح عهد قديم',
+  'اصحاح عهد جديد و اصحاح عهد قديم',
+] as const;
+
+export const TRAINING_SECTION_HEADERS = {
+  prayers: 'الصلوات:',
+  bible: 'الكتاب المقدس:',
+  other: 'اخرى:',
+} as const;
+
+export const TRAINING_TESTAMENT_HEADERS = {
+  old: 'العهد القديم :',
+  new: 'العهد الجديد :',
+} as const;
+
+function extractKnownOptions(text: string, options: readonly string[]): {
+  matched: string[];
+  leftover: string;
+} {
+  const sorted = [...options].sort((a, b) => b.length - a.length);
+  const matched: string[] = [];
+  let remaining = text.trim();
+
+  let changed = true;
+  while (changed && remaining) {
+    changed = false;
+    for (const option of sorted) {
+      if (remaining === option) {
+        if (!matched.includes(option)) matched.push(option);
+        remaining = '';
+        changed = true;
+        break;
+      }
+      if (remaining.startsWith(`${option} `)) {
+        if (!matched.includes(option)) matched.push(option);
+        remaining = remaining.slice(option.length).trim();
+        changed = true;
+        break;
+      }
+      const mid = ` ${option} `;
+      const idx = remaining.indexOf(mid);
+      if (idx !== -1) {
+        if (!matched.includes(option)) matched.push(option);
+        remaining = `${remaining.slice(0, idx)} ${remaining.slice(idx + mid.length)}`.trim();
+        changed = true;
+        break;
+      }
+      if (remaining.endsWith(` ${option}`)) {
+        if (!matched.includes(option)) matched.push(option);
+        remaining = remaining.slice(0, remaining.length - option.length - 1).trim();
+        changed = true;
+        break;
+      }
+    }
+  }
+
+  return { matched, leftover: remaining };
+}
+
+function parseTestamentBooksLine(line: string, header: string, knownBooks: readonly string[]): string[] {
+  let rest = line.trim();
+  if (rest.startsWith(header)) {
+    rest = rest.slice(header.length).trim();
+  } else if (rest.startsWith('العهد القديم') || rest.startsWith('العهد الجديد')) {
+    rest = rest.replace(/^العهد (?:القديم|الجديد)\s*:?\s*/, '').trim();
+  }
+  if (!rest) return [];
+
+  const aliases: Record<string, string> = { متي: 'متى' };
+  const parts = rest
+    .split(/\s*-\s*/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => aliases[p] ?? p);
+
+  const known = new Set<string>(knownBooks);
+  const matched: string[] = [];
+  for (const book of knownBooks) {
+    if (parts.includes(book) && !matched.includes(book)) matched.push(book);
+  }
+  for (const part of parts) {
+    if (!known.has(part) && !matched.includes(part)) matched.push(part);
+  }
+  return matched;
+}
+
+export function composeTrainingNote(
+  prayers: string[],
+  oldTestament: string[],
+  newTestament: string[],
+  other: string
+): string {
+  const parts: string[] = [];
+  if (prayers.length > 0) {
+    parts.push(`${TRAINING_SECTION_HEADERS.prayers} ${prayers.join(' ')}`);
+  }
+  if (oldTestament.length > 0) {
+    parts.push(`${TRAINING_TESTAMENT_HEADERS.old} ${oldTestament.join(' - ')}`);
+  }
+  if (newTestament.length > 0) {
+    parts.push(`${TRAINING_TESTAMENT_HEADERS.new} ${newTestament.join(' - ')}`);
+  }
+  const otherTrimmed = other.trim();
+  if (otherTrimmed) {
+    parts.push(`${TRAINING_SECTION_HEADERS.other} ${otherTrimmed}`);
+  }
+  return parts.join('\n');
+}
+
+export function parseTrainingNote(note: string): {
+  prayers: string[];
+  oldTestament: string[];
+  newTestament: string[];
+  other: string;
+} {
+  const prayerSet = new Set<string>(TRAINING_PRAYER_OPTIONS);
+  const legacyBibleSet = new Set<string>(TRAINING_BIBLE_OPTIONS);
+  const prayers: string[] = [];
+  const oldTestament: string[] = [];
+  const newTestament: string[] = [];
+  const otherLines: string[] = [];
+
+  const lines = note.split(/\r?\n/);
+  let section: 'prayers' | 'bible' | 'other' | null = null;
+
+  const isPrayerHeader = (line: string) =>
+    line === TRAINING_SECTION_HEADERS.prayers || line === 'الصلوات' || line.startsWith('الصلوات:');
+  const isBibleHeader = (line: string) =>
+    line === TRAINING_SECTION_HEADERS.bible ||
+    line === 'الكتاب المقدس' ||
+    line === '(الكتاب المقدس):' ||
+    line === '(الكتاب المقدس)' ||
+    line.startsWith('الكتاب المقدس:') ||
+    line.startsWith('(الكتاب المقدس):');
+  const isOtherHeader = (line: string) =>
+    line === TRAINING_SECTION_HEADERS.other || line === 'اخرى' || line.startsWith('اخرى:');
+  const isOldTestamentHeader = (line: string) =>
+    line.startsWith('العهد القديم') || line.startsWith(TRAINING_TESTAMENT_HEADERS.old);
+  const isNewTestamentHeader = (line: string) =>
+    line.startsWith('العهد الجديد') || line.startsWith(TRAINING_TESTAMENT_HEADERS.new);
+
+  const contentAfterHeader = (line: string, headers: string[]) => {
+    for (const header of headers) {
+      if (line === header || line === header.replace(/:$/, '')) return '';
+      if (line.startsWith(`${header} `) || (header.endsWith(':') && line.startsWith(header))) {
+        return line.slice(header.length).trim();
+      }
+    }
+    return '';
+  };
+
+  const pushUnique = (list: string[], items: string[]) => {
+    for (const item of items) {
+      if (!list.includes(item)) list.push(item);
+    }
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    if (isPrayerHeader(line)) {
+      section = 'prayers';
+      const rest = contentAfterHeader(line, ['الصلوات:', 'الصلوات']);
+      if (rest) {
+        const { matched, leftover } = extractKnownOptions(rest, TRAINING_PRAYER_OPTIONS);
+        pushUnique(prayers, matched);
+        if (leftover) otherLines.push(leftover);
+      }
+      continue;
+    }
+    if (isBibleHeader(line)) {
+      section = 'bible';
+      const rest = contentAfterHeader(line, ['الكتاب المقدس:', '(الكتاب المقدس):', 'الكتاب المقدس', '(الكتاب المقدس)']);
+      if (rest) {
+        if (isOldTestamentHeader(rest)) {
+          pushUnique(oldTestament, parseTestamentBooksLine(rest, TRAINING_TESTAMENT_HEADERS.old, TRAINING_OLD_TESTAMENT_BOOKS));
+        } else if (isNewTestamentHeader(rest)) {
+          pushUnique(newTestament, parseTestamentBooksLine(rest, TRAINING_TESTAMENT_HEADERS.new, TRAINING_NEW_TESTAMENT_BOOKS));
+        } else {
+          const { matched, leftover } = extractKnownOptions(rest, TRAINING_BIBLE_OPTIONS);
+          if (matched.length || leftover) otherLines.push(rest);
+        }
+      }
+      continue;
+    }
+    if (isOldTestamentHeader(line)) {
+      section = 'bible';
+      pushUnique(oldTestament, parseTestamentBooksLine(line, TRAINING_TESTAMENT_HEADERS.old, TRAINING_OLD_TESTAMENT_BOOKS));
+      continue;
+    }
+    if (isNewTestamentHeader(line)) {
+      section = 'bible';
+      pushUnique(newTestament, parseTestamentBooksLine(line, TRAINING_TESTAMENT_HEADERS.new, TRAINING_NEW_TESTAMENT_BOOKS));
+      continue;
+    }
+    if (isOtherHeader(line)) {
+      section = 'other';
+      const rest = contentAfterHeader(line, ['اخرى:', 'اخرى']);
+      if (rest) otherLines.push(rest);
+      continue;
+    }
+
+    if (section === 'prayers') {
+      if (prayerSet.has(line) && !prayers.includes(line)) prayers.push(line);
+      else {
+        const { matched, leftover } = extractKnownOptions(line, TRAINING_PRAYER_OPTIONS);
+        pushUnique(prayers, matched);
+        if (leftover) otherLines.push(leftover);
+      }
+    } else if (section === 'bible') {
+      if (legacyBibleSet.has(line)) otherLines.push(line);
+      else otherLines.push(line);
+    } else if (section === 'other') {
+      otherLines.push(line);
+    } else if (prayerSet.has(line) && !prayers.includes(line)) {
+      prayers.push(line);
+    } else {
+      otherLines.push(line);
+    }
+  }
+
+  return { prayers, oldTestament, newTestament, other: otherLines.join('\n') };
+}
 
 export function getAvatarColor(id: string): string {
   const hash = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
@@ -57,6 +376,15 @@ export function formatDateShort(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
 }
 
+/** Format HH:MM (or HH:MM:SS) as 12-hour clock, e.g. "09:00 pm". */
+export function formatTime(timeStr: string): string {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return timeStr;
+  const period = hours >= 12 ? 'pm' : 'am';
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${String(hour12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${period}`;
+}
+
 export function getBirthdayRelation(birthdayStr: string): 'yesterday' | 'today' | 'tomorrow' | null {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -77,6 +405,34 @@ export function getAge(birthdayStr: string): number {
     age--;
   }
   return age;
+}
+
+/** Egyptian mobile: 010/011/012/015 — accepts local or +20 / 0020 forms. Returns +20… or null. */
+export function normalizeEgyptianPhone(input: string): string | null {
+  const raw = input.trim();
+  if (!raw) return null;
+
+  let digits = raw.replace(/[^\d+]/g, '');
+  if (digits.startsWith('+')) digits = digits.slice(1);
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('0') && !digits.startsWith('20')) {
+    digits = `20${digits.slice(1)}`;
+  }
+
+  if (!/^201[0125]\d{8}$/.test(digits)) return null;
+  return `+${digits}`;
+}
+
+export function isValidEgyptianPhone(input: string): boolean {
+  return normalizeEgyptianPhone(input) !== null;
+}
+
+/** Display form for UI (LTR): +20 10X XXX XXXX. Falls back to trimmed input. */
+export function formatEgyptianPhoneDisplay(input: string): string {
+  const normalized = normalizeEgyptianPhone(input);
+  if (!normalized) return input.trim();
+  const digits = normalized.slice(1); // 2010XXXXXXXX
+  return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
 }
 
 export function hasRecentBirthdayOperation(child: Child): boolean {
