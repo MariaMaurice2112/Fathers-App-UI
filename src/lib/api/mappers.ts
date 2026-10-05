@@ -78,6 +78,7 @@ export function mapApiChild(api: ApiChild | ApiChildDetail): Child {
     phoneNumber2: api.phone_number_2 ?? undefined,
     maritalStatus: api.marital_status === 'married' ? 'married' : 'single',
     marriageDate: api.marriage_date ?? undefined,
+    specialCase: api.special_case === true,
     stageId: api.stage_id,
     stage: api.stage,
     latestConfessionAt: api.latest_confession_at ?? undefined,
@@ -180,6 +181,7 @@ export function childToCreatePayload(data: {
   phoneNumber2?: string;
   maritalStatus: 'single' | 'married';
   marriageDate?: string;
+  specialCase?: boolean;
   stageId: number;
 }) {
   const isMarried = data.maritalStatus === 'married';
@@ -191,6 +193,7 @@ export function childToCreatePayload(data: {
     phone_number_2: data.phoneNumber2?.trim() || null,
     marital_status: data.maritalStatus,
     marriage_date: isMarried ? (data.marriageDate || null) : null,
+    special_case: data.specialCase === true,
     stage_id: data.stageId,
   };
 }
@@ -203,6 +206,7 @@ export function childToUpdatePayload(data: {
   phoneNumber2?: string;
   maritalStatus?: 'single' | 'married';
   marriageDate?: string;
+  specialCase?: boolean;
   stageId?: number;
 }) {
   const payload: Record<string, unknown> = {};
@@ -218,6 +222,7 @@ export function childToUpdatePayload(data: {
   } else if (data.marriageDate !== undefined) {
     payload.marriage_date = data.marriageDate || null;
   }
+  if (data.specialCase !== undefined) payload.special_case = data.specialCase === true;
   if (data.stageId !== undefined) payload.stage_id = data.stageId;
   return payload;
 }

@@ -26,6 +26,7 @@ export async function createChild(data: {
   phoneNumber2?: string;
   maritalStatus: 'single' | 'married';
   marriageDate?: string;
+  specialCase?: boolean;
   stageId: number;
 }): Promise<Child> {
   const res = await invokeFunction<{ success: boolean; data: ApiChild }>('children', {
@@ -45,6 +46,7 @@ export async function updateChild(
     phoneNumber2?: string;
     maritalStatus?: 'single' | 'married';
     marriageDate?: string;
+    specialCase?: boolean;
     stageId?: number;
   }
 ): Promise<Child> {

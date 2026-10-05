@@ -524,6 +524,17 @@ export default function ChildProfile({
                 <span className="profile-meta-value">{formatDate(child.marriageContract)}</span>
               </div>
             )}
+            <div className="profile-meta-item">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text)', cursor: 'default' }}>
+                <input
+                  type="checkbox"
+                  checked={child.specialCase}
+                  disabled
+                  style={{ accentColor: 'var(--color-teal)', width: 15, height: 15 }}
+                />
+                حاله خاصه
+              </label>
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>

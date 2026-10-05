@@ -31,6 +31,7 @@ export interface Child {
   phoneNumber2?: string;
   maritalStatus: MaritalStatus;
   marriageDate?: string;
+  specialCase: boolean;
   stageId: number;
   stage: string;
   latestConfessionAt?: string;
@@ -97,5 +98,6 @@ export interface ChildFormData {
   phoneNumber2?: string;
   maritalStatus: MaritalStatus;
   marriageDate?: string;
+  specialCase: boolean;
   stageId: number;
 }

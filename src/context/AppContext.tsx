@@ -236,6 +236,7 @@ export function AppProvider({ children: reactChildren }: { children: ReactNode }
         phoneNumber2: data.phoneNumber2 || undefined,
         maritalStatus: data.maritalStatus,
         marriageDate: data.marriageDate || undefined,
+        specialCase: data.specialCase === true,
         stageId: data.stageId,
       };
 
